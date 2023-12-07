@@ -29,9 +29,13 @@ func TestSSTable(t *testing.T) {
 	defer os.Remove(tmpfile)
 
 	sstw := sstable.NewSSTableWriter(f)
-	err = sstw.Write(mt.Iterate())
+	written, err := sstw.Write(mt.Iterate())
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	if written != len {
+		t.Fatalf("not all keys written: %d", written)
 	}
 
 	err = f.Close()
@@ -51,7 +55,9 @@ func TestSSTable(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	found := 0
 	for ssti.Next() {
+		found++
 		key := ssti.Key()
 		value := ssti.Value()
 
@@ -63,5 +69,9 @@ func TestSSTable(t *testing.T) {
 		if value != expectedValue {
 			t.Fatalf("value for key %s does not match", key)
 		}
+	}
+
+	if found != len {
+		t.Fatalf("not all keys found: %d", found)
 	}
 }

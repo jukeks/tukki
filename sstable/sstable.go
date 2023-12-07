@@ -24,9 +24,10 @@ func NewSSTableWriter(writer io.Writer) *SSTableWriter {
 	}
 }
 
-func (w *SSTableWriter) Write(iterator memtable.KeyValueIterator) error {
+func (w *SSTableWriter) Write(iterator memtable.KeyValueIterator) (int, error) {
 	writer := bufio.NewWriter(w.writer)
 
+	written := 0
 	for iterator.Next() {
 		key := iterator.Key()
 		value := iterator.Value()
@@ -36,26 +37,27 @@ func (w *SSTableWriter) Write(iterator memtable.KeyValueIterator) error {
 			Value: value,
 		})
 		if err != nil {
-			return fmt.Errorf("failed to serialize key value: %w", err)
+			return written, fmt.Errorf("failed to serialize key value: %w", err)
 		}
 
 		err = binary.Write(writer, binary.LittleEndian, uint32(len(payload)))
 		if err != nil {
-			return fmt.Errorf("failed to write payload len: %w", err)
+			return written, fmt.Errorf("failed to write payload len: %w", err)
 		}
 
 		_, err = writer.Write(payload)
 		if err != nil {
-			return fmt.Errorf("failed to write payload: %w", err)
+			return written, fmt.Errorf("failed to write payload: %w", err)
 		}
+		written++
 	}
 
 	err := writer.Flush()
 	if err != nil {
-		return fmt.Errorf("failed to flush: %w", err)
+		return written, fmt.Errorf("failed to flush: %w", err)
 	}
 
-	return nil
+	return written, nil
 }
 
 type SSTableReader struct {
@@ -95,24 +97,33 @@ func (i *sstableIterator) Value() string {
 }
 
 func (i *sstableIterator) Next() bool {
-	len := uint32(0)
-	err := binary.Read(i.reader, binary.LittleEndian, &len)
+	length := uint32(0)
+	err := binary.Read(i.reader, binary.LittleEndian, &length)
 	if err != nil {
-		log.Printf("failed to read payload len: %v", err)
+		if err == io.EOF {
+			return false
+		}
+
+		log.Fatalf("failed to read payload len: %v", err)
 		return false
 	}
 
-	payload := make([]byte, len)
-	_, err = i.reader.Read(payload)
+	payload := make([]byte, length)
+	n, err := io.ReadFull(i.reader, payload)
 	if err != nil {
-		log.Printf("failed to read payload: %v", err)
+		log.Fatalf("failed to read payload: %v", err)
+		return false
+	}
+
+	if n != int(length) {
+		log.Fatalf("failed to read payload of len %d vs %d", length, n)
 		return false
 	}
 
 	record := &SSTableRecord{}
 	err = proto.Unmarshal(payload, record)
 	if err != nil {
-		log.Printf("failed to unmarshal payload: %v", err)
+		log.Fatalf("failed to unmarshal payload of len %d vs %d: %v: %v", length, len(payload), err, payload)
 		return false
 	}
 
