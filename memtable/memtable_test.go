@@ -1,7 +1,6 @@
 package memtable_test
 
 import (
-	"math/rand"
 	"testing"
 
 	"github.com/jukeks/tukki/memtable"
@@ -15,7 +14,7 @@ func TestMemtable(t *testing.T) {
 	keys := make([]memtable.KeyType, len)
 	values := make([]string, len)
 	for i := 0; i < len; i++ {
-		keys[i] = memtable.KeyType(rand.Int())
+		keys[i] = memtable.KeyType(randstr.String(16))
 		values[i] = randstr.String(16)
 		mt.Insert(keys[i], values[i])
 	}

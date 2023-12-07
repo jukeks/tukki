@@ -1,0 +1,3 @@
+
+# build protobuf
+protoc --go_out=. --go_opt=paths=source_relative sstable/sstable.proto
