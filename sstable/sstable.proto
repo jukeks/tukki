@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package sstable;
+
+option go_package = "github.com/jukeks/tukki/sstable";
+
+message SSTableRecord {
+    string key = 1;
+    string value = 2;
+}
