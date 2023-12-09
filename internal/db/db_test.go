@@ -3,8 +3,8 @@ package db_test
 import (
 	"testing"
 
-	"github.com/jukeks/tukki/db"
-	"github.com/jukeks/tukki/lib/testhelpers"
+	"github.com/jukeks/tukki/internal/db"
+	"github.com/jukeks/tukki/internal/lib/testhelpers"
 	"github.com/thanhpk/randstr"
 )
 

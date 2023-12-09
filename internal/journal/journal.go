@@ -8,8 +8,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/jukeks/tukki/lib"
-	"github.com/jukeks/tukki/memtable"
+	"github.com/jukeks/tukki/internal/lib"
+	"github.com/jukeks/tukki/internal/memtable"
 	journalv1 "github.com/jukeks/tukki/proto/gen/tukki/storage/journal/v1"
 )
 

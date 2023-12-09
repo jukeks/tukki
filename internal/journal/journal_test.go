@@ -4,8 +4,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/jukeks/tukki/journal"
-	"github.com/jukeks/tukki/lib/testhelpers"
+	"github.com/jukeks/tukki/internal/journal"
+	"github.com/jukeks/tukki/internal/lib/testhelpers"
 	journalv1 "github.com/jukeks/tukki/proto/gen/tukki/storage/journal/v1"
 )
 

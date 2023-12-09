@@ -7,7 +7,7 @@ import (
 	"io"
 	"log"
 
-	"github.com/jukeks/tukki/memtable"
+	"github.com/jukeks/tukki/internal/memtable"
 	sstablev1 "github.com/jukeks/tukki/proto/gen/tukki/storage/sstable/v1"
 	"google.golang.org/protobuf/proto"
 )

@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/jukeks/tukki/db"
+	"github.com/jukeks/tukki/internal/db"
 )
 
 func main() {

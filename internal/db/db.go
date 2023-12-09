@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/jukeks/tukki/journal"
-	"github.com/jukeks/tukki/memtable"
+	"github.com/jukeks/tukki/internal/journal"
+	"github.com/jukeks/tukki/internal/memtable"
 )
 
 type Database struct {
