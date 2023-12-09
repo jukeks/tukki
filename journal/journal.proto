@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package journal;
+
+option go_package = "github.com/jukeks/tukki/journal";
+
+message JournalEntry {
+    string key = 1;
+    string value = 2;
+    bool deleted = 3;
+}

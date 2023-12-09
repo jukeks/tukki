@@ -11,9 +11,6 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type SSTable struct {
-}
-
 type SSTableWriter struct {
 	writer io.Writer
 }
