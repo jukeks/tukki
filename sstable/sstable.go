@@ -8,6 +8,7 @@ import (
 	"log"
 
 	"github.com/jukeks/tukki/memtable"
+	sstablev1 "github.com/jukeks/tukki/proto/gen/tukki/storage/sstable/v1"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -29,7 +30,7 @@ func (w *SSTableWriter) Write(iterator memtable.KeyValueIterator) (int, error) {
 		key := iterator.Key()
 		value := iterator.Value()
 
-		payload, err := proto.Marshal(&SSTableRecord{
+		payload, err := proto.Marshal(&sstablev1.SSTableRecord{
 			Key:   key,
 			Value: value,
 		})
@@ -76,7 +77,7 @@ func (r *SSTableReader) Read() (memtable.KeyValueIterator, error) {
 
 type sstableIterator struct {
 	reader  io.Reader
-	current *SSTableRecord
+	current *sstablev1.SSTableRecord
 }
 
 func newSSTableIterator(reader io.Reader) *sstableIterator {
@@ -117,7 +118,7 @@ func (i *sstableIterator) Next() bool {
 		return false
 	}
 
-	record := &SSTableRecord{}
+	record := &sstablev1.SSTableRecord{}
 	err = proto.Unmarshal(payload, record)
 	if err != nil {
 		log.Fatalf("failed to unmarshal payload of len %d vs %d: %v: %v", length, len(payload), err, payload)

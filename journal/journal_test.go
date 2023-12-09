@@ -6,6 +6,7 @@ import (
 
 	"github.com/jukeks/tukki/journal"
 	"github.com/jukeks/tukki/lib/testhelpers"
+	journalv1 "github.com/jukeks/tukki/proto/gen/tukki/storage/journal/v1"
 )
 
 func TestJournal(t *testing.T) {
@@ -14,7 +15,7 @@ func TestJournal(t *testing.T) {
 	defer os.Remove(f.Name())
 
 	journalWriter := journal.NewJournalWriter(f)
-	err := journalWriter.Write(&journal.JournalEntry{
+	err := journalWriter.Write(&journalv1.JournalEntry{
 		Key:     "key",
 		Value:   "value",
 		Deleted: false,

@@ -14,7 +14,7 @@ func TestDB(t *testing.T) {
 
 	key := randstr.String(10)
 	value := randstr.String(16 * 1024)
-	database.Put(key, value)
+	database.Set(key, value)
 
 	storedValue, err := database.Get(key)
 	if err != nil {

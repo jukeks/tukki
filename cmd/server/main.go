@@ -68,7 +68,7 @@ func repl(db *db.Database) {
 
 		switch cmd.Cmd {
 		case "set":
-			err = db.Put(cmd.Key, cmd.Value)
+			err = db.Set(cmd.Key, cmd.Value)
 			if err != nil {
 				log.Printf("failed to set: %v", err)
 			}

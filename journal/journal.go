@@ -10,6 +10,7 @@ import (
 
 	"github.com/jukeks/tukki/lib"
 	"github.com/jukeks/tukki/memtable"
+	journalv1 "github.com/jukeks/tukki/proto/gen/tukki/storage/journal/v1"
 )
 
 type Journal struct {
@@ -58,8 +59,19 @@ func NewJournal(dbDir string, mt memtable.Memtable) (*Journal, error) {
 	}, nil
 }
 
-func (j *Journal) Write(journalEntry *JournalEntry) error {
-	return j.w.Write(journalEntry)
+func (j *Journal) Set(key, value string) error {
+	return j.w.Write(&journalv1.JournalEntry{
+		Key:     key,
+		Value:   value,
+		Deleted: false,
+	})
+}
+
+func (j *Journal) Delete(key string) error {
+	return j.w.Write(&journalv1.JournalEntry{
+		Key:     key,
+		Deleted: true,
+	})
 }
 
 func (j *Journal) Close() error {
@@ -80,7 +92,7 @@ func NewJournalWriter(w WriteSyncer) *JournalWriter {
 	return &JournalWriter{w: w, b: bufio.NewWriter(w)}
 }
 
-func (j *JournalWriter) Write(journalEntry *JournalEntry) error {
+func (j *JournalWriter) Write(journalEntry *journalv1.JournalEntry) error {
 	err := lib.WriteLengthPrefixedProtobufMessage(j.b, journalEntry)
 	if err != nil {
 		return fmt.Errorf("failed to write journal entry: %w", err)
@@ -107,8 +119,8 @@ func NewJournalReader(r io.Reader) *JournalReader {
 	return &JournalReader{r: r}
 }
 
-func (j *JournalReader) Read() (*JournalEntry, error) {
-	journalEntry := &JournalEntry{}
+func (j *JournalReader) Read() (*journalv1.JournalEntry, error) {
+	journalEntry := &journalv1.JournalEntry{}
 	err := lib.ReadLengthPrefixedProtobufMessage(j.r, journalEntry)
 	if err != nil {
 		if err == io.EOF {

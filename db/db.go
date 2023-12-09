@@ -27,12 +27,8 @@ func NewDatabase(dbDir string) *Database {
 	}
 }
 
-func (d *Database) Put(key, value string) error {
-	err := d.journal.Write(&journal.JournalEntry{
-		Key:     key,
-		Value:   value,
-		Deleted: false,
-	})
+func (d *Database) Set(key, value string) error {
+	err := d.journal.Set(key, value)
 	if err != nil {
 		return err
 	}
@@ -52,10 +48,7 @@ func (d *Database) Get(key string) (string, error) {
 }
 
 func (d *Database) Delete(key string) error {
-	err := d.journal.Write(&journal.JournalEntry{
-		Key:     key,
-		Deleted: true,
-	})
+	err := d.journal.Delete(key)
 	if err != nil {
 		return err
 	}
