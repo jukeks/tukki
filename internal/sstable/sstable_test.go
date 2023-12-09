@@ -4,9 +4,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/jukeks/tukki/lib/testhelpers"
-	"github.com/jukeks/tukki/memtable"
-	"github.com/jukeks/tukki/sstable"
+	"github.com/jukeks/tukki/internal/lib/testhelpers"
+	"github.com/jukeks/tukki/internal/memtable"
+	"github.com/jukeks/tukki/internal/sstable"
 	"github.com/thanhpk/randstr"
 )
 
