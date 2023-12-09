@@ -4,6 +4,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/jukeks/tukki/lib/testhelpers"
 	"github.com/jukeks/tukki/memtable"
 	"github.com/jukeks/tukki/sstable"
 	"github.com/thanhpk/randstr"
@@ -21,10 +22,7 @@ func TestSSTable(t *testing.T) {
 		mt.Insert(keys[i], values[i])
 	}
 
-	f, err := os.CreateTemp("", "sample")
-	if err != nil {
-		t.Fatal(err)
-	}
+	f := testhelpers.CreateTempFile("test-tukki", "sstable-test-*")
 	tmpfile := f.Name()
 	defer os.Remove(tmpfile)
 

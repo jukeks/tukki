@@ -2,10 +2,7 @@ package db
 
 import (
 	"fmt"
-	"io"
 	"log"
-	"os"
-	"path/filepath"
 
 	"github.com/jukeks/tukki/journal"
 	"github.com/jukeks/tukki/memtable"
@@ -13,49 +10,20 @@ import (
 
 type Database struct {
 	memtable memtable.Memtable
-	journal  *journal.JournalWriter
+	journal  *journal.Journal
 }
 
 func NewDatabase(dbDir string) *Database {
 	memtable := memtable.NewMemtable()
-	journalPath := filepath.Join(dbDir, "journal")
 
-	var journalFile *os.File
-	var err error
-	// if file exists
-	if _, err = os.Stat(journalPath); err == nil {
-		log.Printf("journal file exists, reading journal")
-		// read journal
-		journalFile, err = os.Open(journalPath)
-		if err != nil {
-			log.Fatalf("failed to open journal file: %v", err)
-		}
-
-		journalReader := journal.NewJournalReader(journalFile)
-		err = readJournal(journalReader, memtable)
-		journalFile.Close()
-		if err != nil {
-			log.Fatalf("failed to read journal: %v", err)
-		}
-
-		// open journal for appending
-		log.Printf("opening journal for appending")
-		journalFile, err = os.OpenFile(journalPath, os.O_APPEND|os.O_WRONLY, 0644)
-		if err != nil {
-			log.Fatalf("failed to open journal file: %v", err)
-		}
-	} else {
-		log.Printf("journal file does not exist, creating %s", journalPath)
-		journalFile, err = os.Create(journalPath)
-		if err != nil {
-			log.Fatalf("failed to create journal file: %v", err)
-		}
+	journal, err := journal.NewJournal(dbDir, memtable)
+	if err != nil {
+		log.Fatalf("failed to create journal: %v", err)
 	}
 
-	journalWriter := journal.NewJournalWriter(journalFile)
 	return &Database{
 		memtable: memtable,
-		journal:  journalWriter,
+		journal:  journal,
 	}
 }
 
@@ -97,23 +65,5 @@ func (d *Database) Delete(key string) error {
 }
 
 func (d *Database) Close() error {
-	return nil
-}
-
-func readJournal(journalReader *journal.JournalReader, mt memtable.Memtable) error {
-	for {
-		journalEntry, err := journalReader.Read()
-		if err != nil {
-			if err == io.EOF {
-				return nil
-			}
-			return err
-		}
-
-		if journalEntry.Deleted {
-			mt.Delete(memtable.KeyType(journalEntry.Key))
-		} else {
-			mt.Insert(memtable.KeyType(journalEntry.Key), journalEntry.Value)
-		}
-	}
+	return d.journal.Close()
 }

@@ -5,19 +5,16 @@ import (
 	"testing"
 
 	"github.com/jukeks/tukki/journal"
+	"github.com/jukeks/tukki/lib/testhelpers"
 )
 
 func TestJournal(t *testing.T) {
-	f, err := os.CreateTemp("", "")
-	if err != nil {
-		t.Fatalf("failed to create temp file: %v", err)
-	}
+	f := testhelpers.CreateTempFile("test-tukki", "")
 	defer f.Close()
 	defer os.Remove(f.Name())
 
 	journalWriter := journal.NewJournalWriter(f)
-
-	err = journalWriter.Write(&journal.JournalEntry{
+	err := journalWriter.Write(&journal.JournalEntry{
 		Key:     "key",
 		Value:   "value",
 		Deleted: false,
@@ -49,4 +46,8 @@ func TestJournal(t *testing.T) {
 	if journalEntry.Deleted != false {
 		t.Fatalf("expected deleted to be false, got '%v'", journalEntry.Deleted)
 	}
+}
+
+func TestNewJournal(t *testing.T) {
+
 }
