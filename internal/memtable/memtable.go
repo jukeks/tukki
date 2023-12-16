@@ -1,6 +1,8 @@
 package memtable
 
 import (
+	"io"
+
 	"github.com/emirpasic/gods/trees/redblacktree"
 	"github.com/jukeks/tukki/internal/keyvalue"
 )
@@ -48,8 +50,18 @@ type memtableRedBlackTreeIterator struct {
 	iter *redblacktree.Iterator
 }
 
-func (i *memtableRedBlackTreeIterator) Next() bool {
-	return i.iter.Next()
+func (i *memtableRedBlackTreeIterator) Next() (keyvalue.IteratorEntry, error) {
+	if !i.iter.Next() {
+		return keyvalue.IteratorEntry{}, io.EOF
+	}
+
+	key := i.iter.Key().(string)
+	value := i.iter.Value().(keyvalue.Value)
+	return keyvalue.IteratorEntry{
+		Key:     key,
+		Value:   value.Value,
+		Deleted: value.Deleted,
+	}, nil
 }
 
 func (i *memtableRedBlackTreeIterator) Key() string {

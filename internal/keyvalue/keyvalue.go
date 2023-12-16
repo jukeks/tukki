@@ -1,12 +1,16 @@
 package keyvalue
 
 type Value struct {
-	Deleted bool
 	Value   string
+	Deleted bool
+}
+
+type IteratorEntry struct {
+	Key     string
+	Value   string
+	Deleted bool
 }
 
 type KeyValueIterator interface {
-	Next() bool
-	Key() string
-	Value() Value
+	Next() (IteratorEntry, error)
 }

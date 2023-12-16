@@ -2,15 +2,12 @@ package sstable
 
 import (
 	"bufio"
-	"encoding/binary"
 	"fmt"
 	"io"
-	"log"
 
 	"github.com/jukeks/tukki/internal/keyvalue"
 	"github.com/jukeks/tukki/internal/storage"
 	sstablev1 "github.com/jukeks/tukki/proto/gen/tukki/storage/sstable/v1"
-	"google.golang.org/protobuf/proto"
 )
 
 type SSTableWriter struct {
@@ -23,41 +20,31 @@ func NewSSTableWriter(writer io.Writer) *SSTableWriter {
 	}
 }
 
-func (w *SSTableWriter) Write(iterator keyvalue.KeyValueIterator) (int, error) {
+func (w *SSTableWriter) Write(entry keyvalue.IteratorEntry) error {
+	record := sstablev1.SSTableRecord{
+		Key:     entry.Key,
+		Value:   entry.Value,
+		Deleted: entry.Deleted,
+	}
+	return storage.WriteLengthPrefixedProtobufMessage(w.writer, &record)
+}
+
+func (w *SSTableWriter) WriteFromIterator(iterator keyvalue.KeyValueIterator) error {
 	writer := bufio.NewWriter(w.writer)
 
-	written := 0
-	for iterator.Next() {
-		key := iterator.Key()
-		value := iterator.Value()
-
-		payload, err := proto.Marshal(&sstablev1.SSTableRecord{
-			Key:     key,
-			Value:   value.Value,
-			Deleted: value.Deleted,
-		})
+	for entry, err := iterator.Next(); err == nil; entry, err = iterator.Next() {
+		err := w.Write(entry)
 		if err != nil {
-			return written, fmt.Errorf("failed to serialize key value: %w", err)
+			return fmt.Errorf("failed to write entry: %w", err)
 		}
-
-		err = binary.Write(writer, binary.LittleEndian, uint32(len(payload)))
-		if err != nil {
-			return written, fmt.Errorf("failed to write payload len: %w", err)
-		}
-
-		_, err = writer.Write(payload)
-		if err != nil {
-			return written, fmt.Errorf("failed to write payload: %w", err)
-		}
-		written++
 	}
 
 	err := writer.Flush()
 	if err != nil {
-		return written, fmt.Errorf("failed to flush: %w", err)
+		return fmt.Errorf("failed to flush: %w", err)
 	}
 
-	return written, nil
+	return nil
 }
 
 type SSTableReader struct {
@@ -78,8 +65,7 @@ func (r *SSTableReader) Read() (keyvalue.KeyValueIterator, error) {
 }
 
 type sstableIterator struct {
-	reader  io.Reader
-	current *sstablev1.SSTableRecord
+	reader io.Reader
 }
 
 func newSSTableIterator(reader io.Reader) *sstableIterator {
@@ -88,28 +74,16 @@ func newSSTableIterator(reader io.Reader) *sstableIterator {
 	}
 }
 
-func (i *sstableIterator) Key() string {
-	return i.current.Key
-}
-
-func (i *sstableIterator) Value() keyvalue.Value {
-	return keyvalue.Value{
-		Value:   i.current.Value,
-		Deleted: i.current.Deleted,
-	}
-}
-
-func (i *sstableIterator) Next() bool {
+func (i *sstableIterator) Next() (keyvalue.IteratorEntry, error) {
 	var record sstablev1.SSTableRecord
 	err := storage.ReadLengthPrefixedProtobufMessage(i.reader, &record)
 	if err != nil {
-		if err == io.EOF {
-			return false
-		}
-
-		log.Fatalf("failed to read record: %v", err)
+		return keyvalue.IteratorEntry{}, err
 	}
 
-	i.current = &record
-	return true
+	return keyvalue.IteratorEntry{
+		Key:     record.Key,
+		Value:   record.Value,
+		Deleted: record.Deleted,
+	}, nil
 }
