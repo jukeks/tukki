@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -35,7 +36,6 @@ func readAndParse(reader *bufio.Reader) (*Command, error) {
 		return nil, err
 	}
 
-	// Trim space and split the input
 	parts := strings.Fields(strings.TrimSpace(input))
 
 	if len(parts) < 2 {
@@ -47,7 +47,6 @@ func readAndParse(reader *bufio.Reader) (*Command, error) {
 		Key: parts[1],
 	}
 
-	// If there's a third part, treat it as the value
 	if len(parts) > 2 {
 		cmd.Value = strings.Join(parts[2:], " ")
 	}
@@ -62,7 +61,11 @@ func repl(db *db.Database) {
 		fmt.Printf("> ")
 		cmd, err := readAndParse(reader)
 		if err != nil {
-			log.Printf("failed to read command: %v", err)
+			if err == io.EOF {
+				fmt.Println()
+				break
+			}
+			fmt.Printf("failed to read command: %v\n", err)
 			continue
 		}
 
@@ -70,23 +73,24 @@ func repl(db *db.Database) {
 		case "set":
 			err = db.Set(cmd.Key, cmd.Value)
 			if err != nil {
-				log.Printf("failed to set: %v", err)
+				fmt.Printf("failed to set: %v\n", err)
 			}
 		case "get":
 			value, err := db.Get(cmd.Key)
 			if err != nil {
-				log.Printf("failed to get: %v", err)
+				fmt.Printf("failed to get: %v\n", err)
+				continue
 			}
-			log.Printf("value: %s", value)
+			fmt.Printf("value: %s\n", value)
 		case "delete":
 			err = db.Delete(cmd.Key)
 			if err != nil {
-				log.Printf("failed to delete: %v", err)
+				fmt.Printf("failed to delete: %v\n", err)
 			}
 		case "exit":
 			return
 		default:
-			log.Printf("unknown command: %s", cmd.Cmd)
+			fmt.Printf("unknown command: %s\n", cmd.Cmd)
 		}
 	}
 }
