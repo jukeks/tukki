@@ -143,9 +143,9 @@ func readJournal(journalReader *JournalReader, mt memtable.Memtable) error {
 		}
 
 		if journalEntry.Deleted {
-			mt.Delete(memtable.KeyType(journalEntry.Key))
+			mt.Delete(journalEntry.Key)
 		} else {
-			mt.Insert(memtable.KeyType(journalEntry.Key), journalEntry.Value)
+			mt.Insert(journalEntry.Key, journalEntry.Value)
 		}
 	}
 }

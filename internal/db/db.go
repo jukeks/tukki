@@ -33,14 +33,14 @@ func (d *Database) Set(key, value string) error {
 		return err
 	}
 
-	d.memtable.Insert(memtable.KeyType(key), value)
+	d.memtable.Insert(key, value)
 	return nil
 }
 
 func (d *Database) Get(key string) (string, error) {
-	value, found := d.memtable.Get(memtable.KeyType(key))
+	value, found := d.memtable.Get(key)
 	if found {
-		return value, nil
+		return value.Value, nil
 	}
 
 	// TODO check segments
@@ -53,7 +53,7 @@ func (d *Database) Delete(key string) error {
 		return err
 	}
 
-	d.memtable.Delete(memtable.KeyType(key))
+	d.memtable.Delete(key)
 	return nil
 }
 

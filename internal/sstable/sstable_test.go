@@ -14,10 +14,10 @@ func TestSSTable(t *testing.T) {
 	mt := memtable.NewMemtable()
 
 	len := 10000
-	keys := make([]memtable.KeyType, len)
+	keys := make([]string, len)
 	values := make([]string, len)
 	for i := 0; i < len; i++ {
-		keys[i] = memtable.KeyType(randstr.String(16))
+		keys[i] = randstr.String(16)
 		values[i] = randstr.String(16)
 		mt.Insert(keys[i], values[i])
 	}
@@ -59,7 +59,7 @@ func TestSSTable(t *testing.T) {
 		key := ssti.Key()
 		value := ssti.Value()
 
-		expectedValue, found := mt.Get(memtable.KeyType(key))
+		expectedValue, found := mt.Get(key)
 		if !found {
 			t.Fatalf("key %s not found", key)
 		}

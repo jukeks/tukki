@@ -7,7 +7,7 @@ import (
 	"io"
 	"log"
 
-	"github.com/jukeks/tukki/internal/memtable"
+	"github.com/jukeks/tukki/internal/keyvalue"
 	sstablev1 "github.com/jukeks/tukki/proto/gen/tukki/storage/sstable/v1"
 	"google.golang.org/protobuf/proto"
 )
@@ -22,7 +22,7 @@ func NewSSTableWriter(writer io.Writer) *SSTableWriter {
 	}
 }
 
-func (w *SSTableWriter) Write(iterator memtable.KeyValueIterator) (int, error) {
+func (w *SSTableWriter) Write(iterator keyvalue.KeyValueIterator) (int, error) {
 	writer := bufio.NewWriter(w.writer)
 
 	written := 0
@@ -31,8 +31,9 @@ func (w *SSTableWriter) Write(iterator memtable.KeyValueIterator) (int, error) {
 		value := iterator.Value()
 
 		payload, err := proto.Marshal(&sstablev1.SSTableRecord{
-			Key:   key,
-			Value: value,
+			Key:     key,
+			Value:   value.Value,
+			Deleted: value.Deleted,
 		})
 		if err != nil {
 			return written, fmt.Errorf("failed to serialize key value: %w", err)
@@ -68,7 +69,7 @@ func NewSSTableReader(reader io.Reader) *SSTableReader {
 	}
 }
 
-func (r *SSTableReader) Read() (memtable.KeyValueIterator, error) {
+func (r *SSTableReader) Read() (keyvalue.KeyValueIterator, error) {
 	reader := bufio.NewReader(r.reader)
 	return newSSTableIterator(
 		reader,
@@ -90,8 +91,11 @@ func (i *sstableIterator) Key() string {
 	return i.current.Key
 }
 
-func (i *sstableIterator) Value() string {
-	return i.current.Value
+func (i *sstableIterator) Value() keyvalue.Value {
+	return keyvalue.Value{
+		Value:   i.current.Value,
+		Deleted: i.current.Deleted,
+	}
 }
 
 func (i *sstableIterator) Next() bool {

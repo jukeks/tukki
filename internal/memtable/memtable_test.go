@@ -11,10 +11,10 @@ func TestMemtable(t *testing.T) {
 	mt := memtable.NewMemtable()
 
 	len := 10000
-	keys := make([]memtable.KeyType, len)
+	keys := make([]string, len)
 	values := make([]string, len)
 	for i := 0; i < len; i++ {
-		keys[i] = memtable.KeyType(randstr.String(16))
+		keys[i] = randstr.String(16)
 		values[i] = randstr.String(16)
 		mt.Insert(keys[i], values[i])
 	}
@@ -28,16 +28,16 @@ func TestMemtable(t *testing.T) {
 			t.Errorf("%v not found", key)
 		}
 
-		if value != expected {
-			t.Errorf("%s was expect but %s was found", expected, value)
+		if value.Value != expected {
+			t.Errorf("%s was expect but %s was found", expected, value.Value)
 		}
 	}
 
 	for i := 0; i < len; i++ {
 		key := keys[i]
 		mt.Delete(key)
-		_, found := mt.Get(key)
-		if found {
+		value, found := mt.Get(key)
+		if found && !value.Deleted {
 			t.Errorf("%v found even though deleted", key)
 		}
 	}
