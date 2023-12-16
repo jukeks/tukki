@@ -5,8 +5,10 @@ import (
 	"testing"
 
 	"github.com/jukeks/tukki/internal/journal"
+	"github.com/jukeks/tukki/internal/memtable"
 	journalv1 "github.com/jukeks/tukki/proto/gen/tukki/storage/journal/v1"
 	testutil "github.com/jukeks/tukki/tests/util"
+	"github.com/thanhpk/randstr"
 )
 
 func TestJournal(t *testing.T) {
@@ -50,5 +52,56 @@ func TestJournal(t *testing.T) {
 }
 
 func TestNewJournal(t *testing.T) {
+	mt := memtable.NewMemtable()
+	dbDir := testutil.EnsureTempDirectory("test-tukki-" + randstr.String(10))
+	j, err := journal.NewJournal(dbDir, mt)
+	if err != nil {
+		t.Fatalf("failed to create journal: %v", err)
+	}
 
+	err = j.Set("key", "value")
+	if err != nil {
+		t.Fatalf("failed to write journal entry: %v", err)
+	}
+	err = j.Set("key2", "value2")
+	if err != nil {
+		t.Fatalf("failed to write journal entry: %v", err)
+	}
+	err = j.Delete("key2")
+	if err != nil {
+		t.Fatalf("failed to write journal entry: %v", err)
+	}
+
+	j.Close()
+
+	mt = memtable.NewMemtable()
+	journal, err := journal.NewJournal(dbDir, mt)
+	if err != nil {
+		t.Fatalf("failed to create journal reader: %v", err)
+	}
+
+	value, found := mt.Get("key")
+	if !found {
+		t.Fatalf("expected key to be found in memtable")
+	}
+
+	if value.Value != "value" {
+		t.Fatalf("expected value to be 'value', got %v", value)
+	}
+
+	value, found = mt.Get("key2")
+	if !found {
+		t.Fatalf("expected key to be found in memtable")
+	}
+	if value.Value != "" {
+		t.Fatalf("expected value to be '', got %v", value)
+	}
+	if value.Deleted != true {
+		t.Fatalf("expected deleted to be true, got %v", value)
+	}
+
+	err = journal.Close()
+	if err != nil {
+		t.Fatalf("failed to close journal: %v", err)
+	}
 }

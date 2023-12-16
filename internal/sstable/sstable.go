@@ -8,6 +8,7 @@ import (
 	"log"
 
 	"github.com/jukeks/tukki/internal/keyvalue"
+	"github.com/jukeks/tukki/internal/storage"
 	sstablev1 "github.com/jukeks/tukki/proto/gen/tukki/storage/sstable/v1"
 	"google.golang.org/protobuf/proto"
 )
@@ -99,36 +100,16 @@ func (i *sstableIterator) Value() keyvalue.Value {
 }
 
 func (i *sstableIterator) Next() bool {
-	length := uint32(0)
-	err := binary.Read(i.reader, binary.LittleEndian, &length)
+	var record sstablev1.SSTableRecord
+	err := storage.ReadLengthPrefixedProtobufMessage(i.reader, &record)
 	if err != nil {
 		if err == io.EOF {
 			return false
 		}
 
-		log.Fatalf("failed to read payload len: %v", err)
-		return false
+		log.Fatalf("failed to read record: %v", err)
 	}
 
-	payload := make([]byte, length)
-	n, err := io.ReadFull(i.reader, payload)
-	if err != nil {
-		log.Fatalf("failed to read payload: %v", err)
-		return false
-	}
-
-	if n != int(length) {
-		log.Fatalf("failed to read payload of len %d vs %d", length, n)
-		return false
-	}
-
-	record := &sstablev1.SSTableRecord{}
-	err = proto.Unmarshal(payload, record)
-	if err != nil {
-		log.Fatalf("failed to unmarshal payload of len %d vs %d: %v: %v", length, len(payload), err, payload)
-		return false
-	}
-
-	i.current = record
+	i.current = &record
 	return true
 }

@@ -8,8 +8,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/jukeks/tukki/internal/lib"
 	"github.com/jukeks/tukki/internal/memtable"
+	"github.com/jukeks/tukki/internal/storage"
 	journalv1 "github.com/jukeks/tukki/proto/gen/tukki/storage/journal/v1"
 )
 
@@ -93,7 +93,7 @@ func NewJournalWriter(w WriteSyncer) *JournalWriter {
 }
 
 func (j *JournalWriter) Write(journalEntry *journalv1.JournalEntry) error {
-	err := lib.WriteLengthPrefixedProtobufMessage(j.b, journalEntry)
+	err := storage.WriteLengthPrefixedProtobufMessage(j.b, journalEntry)
 	if err != nil {
 		return fmt.Errorf("failed to write journal entry: %w", err)
 	}
@@ -121,7 +121,7 @@ func NewJournalReader(r io.Reader) *JournalReader {
 
 func (j *JournalReader) Read() (*journalv1.JournalEntry, error) {
 	journalEntry := &journalv1.JournalEntry{}
-	err := lib.ReadLengthPrefixedProtobufMessage(j.r, journalEntry)
+	err := storage.ReadLengthPrefixedProtobufMessage(j.r, journalEntry)
 	if err != nil {
 		if err == io.EOF {
 			return nil, io.EOF
