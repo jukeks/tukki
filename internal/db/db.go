@@ -1,7 +1,6 @@
 package db
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/jukeks/tukki/internal/journal"
@@ -40,11 +39,14 @@ func (d *Database) Set(key, value string) error {
 func (d *Database) Get(key string) (string, error) {
 	value, found := d.memtable.Get(key)
 	if found {
+		if value.Deleted {
+			return "", ErrKeyNotFound
+		}
 		return value.Value, nil
 	}
 
 	// TODO check segments
-	return "", fmt.Errorf("key not found: %s", key)
+	return "", ErrKeyNotFound
 }
 
 func (d *Database) Delete(key string) error {

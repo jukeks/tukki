@@ -24,8 +24,13 @@ jobs:
     - name: Build
       run: make build
 
-    - name: Test
-      run: make test
+    - name: Test and coverage
+      run: make test-cover
+
+    - name: check test coverage
+      uses: vladopajic/go-test-coverage@v2
+      with:
+        config: ./testcoverage.yml
 
     - uses: bufbuild/buf-setup-action@v1
     - uses: bufbuild/buf-lint-action@v1
