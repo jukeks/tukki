@@ -5,12 +5,12 @@ import (
 	"testing"
 
 	"github.com/jukeks/tukki/internal/journal"
-	"github.com/jukeks/tukki/internal/lib/testhelpers"
 	journalv1 "github.com/jukeks/tukki/proto/gen/tukki/storage/journal/v1"
+	testutil "github.com/jukeks/tukki/tests/util"
 )
 
 func TestJournal(t *testing.T) {
-	f := testhelpers.CreateTempFile("test-tukki", "")
+	f := testutil.CreateTempFile("test-tukki", "")
 	defer f.Close()
 	defer os.Remove(f.Name())
 

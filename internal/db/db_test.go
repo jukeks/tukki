@@ -4,12 +4,12 @@ import (
 	"testing"
 
 	"github.com/jukeks/tukki/internal/db"
-	"github.com/jukeks/tukki/internal/lib/testhelpers"
+	testutil "github.com/jukeks/tukki/tests/util"
 	"github.com/thanhpk/randstr"
 )
 
 func TestDB(t *testing.T) {
-	dbDir := testhelpers.EnsureTempDirectory("test-tukki-" + randstr.String(10))
+	dbDir := testutil.EnsureTempDirectory("test-tukki-" + randstr.String(10))
 	database := db.NewDatabase(dbDir)
 
 	key := randstr.String(10)
@@ -42,7 +42,7 @@ func TestDB(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	dbDir := testhelpers.EnsureTempDirectory("test-tukki-" + randstr.String(10))
+	dbDir := testutil.EnsureTempDirectory("test-tukki-" + randstr.String(10))
 	database := db.NewDatabase(dbDir)
 
 	key := randstr.String(10)
