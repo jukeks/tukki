@@ -37,12 +37,36 @@ func createSSTable(length int) string {
 	return tmpfile
 }
 
+func readToMemtable(filenames ...string) memtable.Memtable {
+	mt := memtable.NewMemtable()
+	for _, filename := range filenames {
+		f, err := os.Open(filename)
+		if err != nil {
+			panic(err)
+		}
+		defer f.Close()
+
+		sstr := sstable.NewSSTableReader(f)
+		ssti := sstr.Iterate()
+
+		for entry, err := ssti.Next(); err == nil; entry, err = ssti.Next() {
+			mt.Insert(entry.Key, entry.Value)
+		}
+	}
+
+	return mt
+}
+
 func TestMerge(t *testing.T) {
+	table1Len := 1200
+	table2Len := 3000
 	testutil.EnsureTempDirectory("test-tukki")
-	filename1 := createSSTable(1200)
+	filename1 := createSSTable(table1Len)
 	defer os.Remove(filename1)
-	filename2 := createSSTable(3000)
+	filename2 := createSSTable(table2Len)
 	defer os.Remove(filename2)
+
+	mt := readToMemtable(filename1, filename2)
 
 	f1, err := os.Open(filename1)
 	if err != nil {
@@ -63,14 +87,8 @@ func TestMerge(t *testing.T) {
 
 	reader1 := sstable.NewSSTableReader(f1)
 	reader2 := sstable.NewSSTableReader(f2)
-	iter1, err := reader1.Read()
-	if err != nil {
-		panic(err)
-	}
-	iter2, err := reader2.Read()
-	if err != nil {
-		panic(err)
-	}
+	iter1 := reader1.Iterate()
+	iter2 := reader2.Iterate()
 
 	sstable.MergeSSTables(f, iter1, iter2)
 	err = f1.Close()
@@ -88,10 +106,7 @@ func TestMerge(t *testing.T) {
 	}
 
 	sstr := sstable.NewSSTableReader(f)
-	ssti, err := sstr.Read()
-	if err != nil {
-		panic(err)
-	}
+	ssti := sstr.Iterate()
 
 	found := 0
 	prevKey := ""
@@ -104,7 +119,39 @@ func TestMerge(t *testing.T) {
 		prevKey = entry.Key
 	}
 
-	if found != 4200 {
+	if found != table1Len+table2Len {
 		t.Fatalf("not all keys found: %d", found)
+	}
+
+	mt2 := readToMemtable(outfile)
+	mt1Iter := mt.Iterate()
+	mt2Iter := mt2.Iterate()
+
+	for i := 0; i < table1Len+table2Len; i++ {
+		entry1, err := mt1Iter.Next()
+		if err != nil {
+			panic(err)
+		}
+		entry2, err := mt2Iter.Next()
+		if err != nil {
+			panic(err)
+		}
+
+		if entry1.Key != entry2.Key {
+			t.Fatalf("keys not equal")
+		}
+		if entry1.Value != entry2.Value {
+			t.Fatalf("values not equal")
+		}
+	}
+
+	_, err = mt1Iter.Next()
+	if err == nil {
+		t.Fatalf("expected EOF")
+	}
+
+	_, err = mt2Iter.Next()
+	if err == nil {
+		t.Fatalf("expected EOF")
 	}
 }

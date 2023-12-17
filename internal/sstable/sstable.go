@@ -57,11 +57,11 @@ func NewSSTableReader(reader io.Reader) *SSTableReader {
 	}
 }
 
-func (r *SSTableReader) Read() (keyvalue.KeyValueIterator, error) {
+func (r *SSTableReader) Iterate() keyvalue.KeyValueIterator {
 	reader := bufio.NewReader(r.reader)
 	return newSSTableIterator(
 		reader,
-	), nil
+	)
 }
 
 type sstableIterator struct {
