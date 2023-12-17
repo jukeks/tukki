@@ -64,14 +64,6 @@ func (i *memtableRedBlackTreeIterator) Next() (keyvalue.IteratorEntry, error) {
 	}, nil
 }
 
-func (i *memtableRedBlackTreeIterator) Key() string {
-	return i.iter.Key().(string)
-}
-
-func (i *memtableRedBlackTreeIterator) Value() keyvalue.Value {
-	return i.iter.Value().(keyvalue.Value)
-}
-
 func (m *memtableRedBlackTree) Iterate() keyvalue.KeyValueIterator {
 	iter := m.t.Iterator()
 	return &memtableRedBlackTreeIterator{

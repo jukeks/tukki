@@ -42,3 +42,26 @@ func TestMemtable(t *testing.T) {
 		}
 	}
 }
+
+func TestMemtableIterator(t *testing.T) {
+	mt := memtable.NewMemtable()
+
+	len := 10000
+	keys := make([]string, len)
+	values := make([]string, len)
+	for i := 0; i < len; i++ {
+		keys[i] = randstr.String(16)
+		values[i] = randstr.String(16)
+		mt.Insert(keys[i], values[i])
+	}
+
+	iter := mt.Iterate()
+	lastKey := ""
+	for entry, err := iter.Next(); err == nil; entry, err = iter.Next() {
+		if lastKey != "" && entry.Key < lastKey {
+			t.Errorf("iterator not sorted")
+		}
+		lastKey = entry.Key
+	}
+
+}

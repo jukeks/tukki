@@ -47,9 +47,7 @@ func readToMemtable(filenames ...string) memtable.Memtable {
 		defer f.Close()
 
 		sstr := sstable.NewSSTableReader(f)
-		ssti := sstr.Iterate()
-
-		for entry, err := ssti.Next(); err == nil; entry, err = ssti.Next() {
+		for entry, err := sstr.Next(); err == nil; entry, err = sstr.Next() {
 			mt.Insert(entry.Key, entry.Value)
 		}
 	}
@@ -57,9 +55,42 @@ func readToMemtable(filenames ...string) memtable.Memtable {
 	return mt
 }
 
-func TestMerge(t *testing.T) {
-	table1Len := 1200
-	table2Len := 3000
+func checkMemtableAreEqual(mt1, mt2 memtable.Memtable, expectedLen int) bool {
+	mt1Iter := mt1.Iterate()
+	mt2Iter := mt2.Iterate()
+
+	for i := 0; i < expectedLen; i++ {
+		entry1, err := mt1Iter.Next()
+		if err != nil {
+			return false
+		}
+		entry2, err := mt2Iter.Next()
+		if err != nil {
+			return false
+		}
+
+		if entry1.Key != entry2.Key {
+			return false
+		}
+		if entry1.Value != entry2.Value {
+			return false
+		}
+	}
+
+	_, err := mt1Iter.Next()
+	if err == nil {
+		return false
+	}
+
+	_, err = mt2Iter.Next()
+	if err == nil {
+		return false
+	}
+
+	return true
+}
+
+func testMerge(t *testing.T, table1Len, table2Len int) {
 	testutil.EnsureTempDirectory("test-tukki")
 	filename1 := createSSTable(table1Len)
 	defer os.Remove(filename1)
@@ -68,16 +99,10 @@ func TestMerge(t *testing.T) {
 
 	mt := readToMemtable(filename1, filename2)
 
-	f1, err := os.Open(filename1)
-	if err != nil {
-		panic(err)
-	}
+	f1, _ := os.Open(filename1)
 	defer f1.Close()
 
-	f2, err := os.Open(filename2)
-	if err != nil {
-		panic(err)
-	}
+	f2, _ := os.Open(filename2)
 	defer f2.Close()
 
 	f := testutil.CreateTempFile("test-tukki", "sstable-test-*")
@@ -87,30 +112,16 @@ func TestMerge(t *testing.T) {
 
 	reader1 := sstable.NewSSTableReader(f1)
 	reader2 := sstable.NewSSTableReader(f2)
-	iter1 := reader1.Iterate()
-	iter2 := reader2.Iterate()
 
-	sstable.MergeSSTables(f, iter1, iter2)
-	err = f1.Close()
-	if err != nil {
-		panic(err)
-	}
-	f2.Close()
-	if err != nil {
-		panic(err)
-	}
+	sstable.MergeSSTables(f, reader1, reader2)
 
-	f, err = os.Open(outfile)
-	if err != nil {
-		panic(err)
-	}
+	f, _ = os.Open(outfile)
 
 	sstr := sstable.NewSSTableReader(f)
-	ssti := sstr.Iterate()
 
 	found := 0
 	prevKey := ""
-	for entry, err := ssti.Next(); err == nil; entry, err = ssti.Next() {
+	for entry, err := sstr.Next(); err == nil; entry, err = sstr.Next() {
 		found++
 
 		if prevKey != "" && prevKey > entry.Key {
@@ -124,34 +135,68 @@ func TestMerge(t *testing.T) {
 	}
 
 	mt2 := readToMemtable(outfile)
-	mt1Iter := mt.Iterate()
-	mt2Iter := mt2.Iterate()
+	areEqual := checkMemtableAreEqual(mt, mt2, table1Len+table2Len)
+	if !areEqual {
+		t.Fatalf("memtables are not equal")
+	}
+}
 
-	for i := 0; i < table1Len+table2Len; i++ {
-		entry1, err := mt1Iter.Next()
-		if err != nil {
-			panic(err)
-		}
-		entry2, err := mt2Iter.Next()
-		if err != nil {
-			panic(err)
-		}
+func TestMerge(t *testing.T) {
+	testMerge(t, 1000, 1000)
+	testMerge(t, 1000, 0)
+	testMerge(t, 0, 1000)
+}
 
-		if entry1.Key != entry2.Key {
-			t.Fatalf("keys not equal")
-		}
-		if entry1.Value != entry2.Value {
-			t.Fatalf("values not equal")
-		}
+func TestMergeUpdates(t *testing.T) {
+	mt1 := memtable.NewMemtable()
+	mt1.Insert("a", "a")
+
+	mt2 := memtable.NewMemtable()
+	mt2.Insert("a", "b")
+
+	f1 := testutil.CreateTempFile("test-tukki", "sstable-test-*")
+	defer os.Remove(f1.Name())
+	f2 := testutil.CreateTempFile("test-tukki", "sstable-test-*")
+	defer os.Remove(f2.Name())
+
+	sstw1 := sstable.NewSSTableWriter(f1)
+	err := sstw1.WriteFromIterator(mt1.Iterate())
+	if err != nil {
+		t.Fatalf("failed to write to sstable: %v", err)
+	}
+	sstw2 := sstable.NewSSTableWriter(f2)
+	err = sstw2.WriteFromIterator(mt2.Iterate())
+	if err != nil {
+		t.Fatalf("failed to write to sstable: %v", err)
 	}
 
-	_, err = mt1Iter.Next()
-	if err == nil {
-		t.Fatalf("expected EOF")
+	f1, _ = os.Open(f1.Name())
+	defer f1.Close()
+	f2, _ = os.Open(f2.Name())
+
+	f := testutil.CreateTempFile("test-tukki", "sstable-test-*")
+	outfile := f.Name()
+	defer f.Close()
+	defer os.Remove(outfile)
+
+	reader1 := sstable.NewSSTableReader(f1)
+	reader2 := sstable.NewSSTableReader(f2)
+
+	sstable.MergeSSTables(f, reader1, reader2)
+
+	f, _ = os.Open(outfile)
+	mergeReader := sstable.NewSSTableReader(f)
+
+	m := make(map[string]string)
+	for entry, err := mergeReader.Next(); err == nil; entry, err = mergeReader.Next() {
+		m[entry.Key] = entry.Value
 	}
 
-	_, err = mt2Iter.Next()
-	if err == nil {
-		t.Fatalf("expected EOF")
+	if len(m) != 1 {
+		t.Fatalf("expected 1 entry, got %d", len(m))
+	}
+
+	if m["a"] != "b" {
+		t.Fatalf("expected value b, got %s", m["a"])
 	}
 }

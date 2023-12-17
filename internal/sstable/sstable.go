@@ -57,24 +57,7 @@ func NewSSTableReader(reader io.Reader) *SSTableReader {
 	}
 }
 
-func (r *SSTableReader) Iterate() keyvalue.KeyValueIterator {
-	reader := bufio.NewReader(r.reader)
-	return newSSTableIterator(
-		reader,
-	)
-}
-
-type sstableIterator struct {
-	reader io.Reader
-}
-
-func newSSTableIterator(reader io.Reader) *sstableIterator {
-	return &sstableIterator{
-		reader: reader,
-	}
-}
-
-func (i *sstableIterator) Next() (keyvalue.IteratorEntry, error) {
+func (i *SSTableReader) Next() (keyvalue.IteratorEntry, error) {
 	var record sstablev1.SSTableRecord
 	err := storage.ReadLengthPrefixedProtobufMessage(i.reader, &record)
 	if err != nil {

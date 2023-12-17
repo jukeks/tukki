@@ -44,10 +44,8 @@ func TestSSTable(t *testing.T) {
 	defer f.Close()
 
 	sstr := sstable.NewSSTableReader(f)
-	ssti := sstr.Iterate()
-
 	found := 0
-	for entry, err := ssti.Next(); err == nil; entry, err = ssti.Next() {
+	for entry, err := sstr.Next(); err == nil; entry, err = sstr.Next() {
 		found++
 
 		key := entry.Key
