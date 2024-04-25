@@ -8,7 +8,7 @@ import (
 
 type Database struct {
 	memtable memtable.Memtable
-	journal  *memtable.Journal
+	journal  *memtable.MembtableJournal
 }
 
 func NewDatabase(dbDir string) *Database {

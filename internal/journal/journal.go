@@ -4,6 +4,9 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"log"
+	"os"
+	"path/filepath"
 
 	"github.com/jukeks/tukki/internal/storage"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -60,4 +63,52 @@ func (j *JournalReader) Read(journalEntry protoreflect.ProtoMessage) error {
 	}
 
 	return nil
+}
+
+type Journal struct {
+	File   *os.File
+	Writer *JournalWriter
+}
+
+type ExistingJournalHandler func(r *JournalReader) error
+
+func OpenJournal(dbDir string, journalName string, existingHandler ExistingJournalHandler) (*Journal, error) {
+	journalPath := filepath.Join(dbDir, journalName)
+
+	var journalFile *os.File
+	var err error
+
+	if _, err = os.Stat(journalPath); err == nil {
+		log.Printf("journal file exists, reading journal")
+		// read journal
+		journalFile, err = os.Open(journalPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open journal file: %w", err)
+		}
+
+		journalReader := NewJournalReader(journalFile)
+		err = existingHandler(journalReader)
+		journalFile.Close()
+		if err != nil {
+			return nil, fmt.Errorf("failed to read journal: %w", err)
+		}
+
+		// open journal for appending
+		log.Printf("opening journal for appending")
+		journalFile, err = os.OpenFile(journalPath, os.O_APPEND|os.O_WRONLY, 0644)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open journal file: %w", err)
+		}
+	} else {
+		log.Printf("journal file does not exist, creating %s", journalPath)
+		journalFile, err = os.Create(journalPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create journal file: %w", err)
+		}
+	}
+
+	return &Journal{
+		File:   journalFile,
+		Writer: NewJournalWriter(journalFile),
+	}, nil
 }
