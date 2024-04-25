@@ -8,7 +8,7 @@ import (
 )
 
 type MembtableJournal struct {
-	j *journal.Journal
+	journal *journal.Journal
 }
 
 func NewJournal(dbDir string, mt Memtable) (*MembtableJournal, error) {
@@ -24,7 +24,7 @@ func NewJournal(dbDir string, mt Memtable) (*MembtableJournal, error) {
 }
 
 func (mtj *MembtableJournal) Set(key, value string) error {
-	return mtj.j.Writer.Write(&journalv1.JournalEntry{
+	return mtj.journal.Writer.Write(&journalv1.JournalEntry{
 		Key:     key,
 		Value:   value,
 		Deleted: false,
@@ -32,14 +32,14 @@ func (mtj *MembtableJournal) Set(key, value string) error {
 }
 
 func (mtj *MembtableJournal) Delete(key string) error {
-	return mtj.j.Writer.Write(&journalv1.JournalEntry{
+	return mtj.journal.Writer.Write(&journalv1.JournalEntry{
 		Key:     key,
 		Deleted: true,
 	})
 }
 
 func (mtj *MembtableJournal) Close() error {
-	return mtj.j.File.Close()
+	return mtj.journal.File.Close()
 }
 
 func readJournal(journalReader *journal.JournalReader, mt Memtable) error {
