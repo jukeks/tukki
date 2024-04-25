@@ -1,9 +1,0 @@
-syntax = "proto3";
-
-package tukki.storage.dbmetadata.v1;
-
-option go_package = "github.com/jukeks/tukki/db/metadata";
-
-message Metadata {
-    
-}

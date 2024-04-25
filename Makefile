@@ -1,4 +1,5 @@
 .PHONY: proto test test-cover build
+default: build test
 
 proto:
 	cd proto && buf lint . && buf generate .
@@ -8,6 +9,9 @@ test:
 
 build:
 	go build -v ./...
+
+format:
+	go fmt ./...
 
 test-cover:
 	go test -coverprofile=coverage.out ./... -coverpkg=./...
