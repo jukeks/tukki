@@ -1,6 +1,8 @@
 package segments
 
-import "io"
+import (
+	"io"
+)
 
 type SegmentJournal struct {
 	writer io.Writer

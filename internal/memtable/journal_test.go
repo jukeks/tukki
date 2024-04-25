@@ -1,4 +1,4 @@
-package journal_test
+package memtable_test
 
 import (
 	"os"
@@ -33,7 +33,8 @@ func TestJournal(t *testing.T) {
 	defer readerFile.Close()
 	journalReader := journal.NewJournalReader(readerFile)
 
-	journalEntry, err := journalReader.Read()
+	journalEntry := journalv1.JournalEntry{}
+	err = journalReader.Read(&journalEntry)
 	if err != nil {
 		t.Fatalf("failed to read journal entry: %v", err)
 	}
@@ -54,7 +55,7 @@ func TestJournal(t *testing.T) {
 func TestNewJournal(t *testing.T) {
 	mt := memtable.NewMemtable()
 	dbDir := testutil.EnsureTempDirectory("test-tukki-" + randstr.String(10))
-	j, err := journal.NewJournal(dbDir, mt)
+	j, err := memtable.NewJournal(dbDir, mt)
 	if err != nil {
 		t.Fatalf("failed to create journal: %v", err)
 	}
@@ -75,7 +76,7 @@ func TestNewJournal(t *testing.T) {
 	j.Close()
 
 	mt = memtable.NewMemtable()
-	journal, err := journal.NewJournal(dbDir, mt)
+	journal, err := memtable.NewJournal(dbDir, mt)
 	if err != nil {
 		t.Fatalf("failed to create journal reader: %v", err)
 	}

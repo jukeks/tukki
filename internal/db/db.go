@@ -3,25 +3,24 @@ package db
 import (
 	"log"
 
-	"github.com/jukeks/tukki/internal/journal"
 	"github.com/jukeks/tukki/internal/memtable"
 )
 
 type Database struct {
 	memtable memtable.Memtable
-	journal  *journal.Journal
+	journal  *memtable.Journal
 }
 
 func NewDatabase(dbDir string) *Database {
-	memtable := memtable.NewMemtable()
+	mt := memtable.NewMemtable()
 
-	journal, err := journal.NewJournal(dbDir, memtable)
+	journal, err := memtable.NewJournal(dbDir, mt)
 	if err != nil {
 		log.Fatalf("failed to create journal: %v", err)
 	}
 
 	return &Database{
-		memtable: memtable,
+		memtable: mt,
 		journal:  journal,
 	}
 }
