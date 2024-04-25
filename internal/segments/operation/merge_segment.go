@@ -25,7 +25,7 @@ func (o *MergeSegmentsOperation) Id() uint64 {
 	return o.id
 }
 
-func (o *MergeSegmentsOperation) StartJournalEntry() *segmentsv1.SegmentJournalEntry {
+func (o *MergeSegmentsOperation) StartJournalEntry() *segmentsv1.SegmentOperationJournalEntry {
 	mergeOperation := &segmentsv1.MergeSegments{
 		NewSegment: &segmentsv1.Segment{
 			Id:       o.mergedSegment.Id,
@@ -42,8 +42,8 @@ func (o *MergeSegmentsOperation) StartJournalEntry() *segmentsv1.SegmentJournalE
 			})
 	}
 
-	entry := &segmentsv1.SegmentJournalEntry{
-		Entry: &segmentsv1.SegmentJournalEntry_Started{
+	entry := &segmentsv1.SegmentOperationJournalEntry{
+		Entry: &segmentsv1.SegmentOperationJournalEntry_Started{
 			Started: &segmentsv1.SegmentOperation{
 				Id: o.id,
 				Operation: &segmentsv1.SegmentOperation_Merge{
@@ -56,9 +56,9 @@ func (o *MergeSegmentsOperation) StartJournalEntry() *segmentsv1.SegmentJournalE
 	return entry
 }
 
-func (o *MergeSegmentsOperation) CompletedJournalEntry() *segmentsv1.SegmentJournalEntry {
-	entry := &segmentsv1.SegmentJournalEntry{
-		Entry: &segmentsv1.SegmentJournalEntry_Completed{
+func (o *MergeSegmentsOperation) CompletedJournalEntry() *segmentsv1.SegmentOperationJournalEntry {
+	entry := &segmentsv1.SegmentOperationJournalEntry{
+		Entry: &segmentsv1.SegmentOperationJournalEntry_Completed{
 			Completed: o.id,
 		},
 	}

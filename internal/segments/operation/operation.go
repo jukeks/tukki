@@ -9,7 +9,7 @@ type Segment struct {
 
 type SegmentOperation interface {
 	Id() uint64
-	StartJournalEntry() *segmentsv1.SegmentJournalEntry
+	StartJournalEntry() *segmentsv1.SegmentOperationJournalEntry
 	Execute() error
-	CompletedJournalEntry() *segmentsv1.SegmentJournalEntry
+	CompletedJournalEntry() *segmentsv1.SegmentOperationJournalEntry
 }

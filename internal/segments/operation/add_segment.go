@@ -26,9 +26,9 @@ func (o *AddSegmentOperation) Id() uint64 {
 	return o.id
 }
 
-func (o *AddSegmentOperation) StartJournalEntry() *segmentsv1.SegmentJournalEntry {
-	entry := &segmentsv1.SegmentJournalEntry{
-		Entry: &segmentsv1.SegmentJournalEntry_Started{
+func (o *AddSegmentOperation) StartJournalEntry() *segmentsv1.SegmentOperationJournalEntry {
+	entry := &segmentsv1.SegmentOperationJournalEntry{
+		Entry: &segmentsv1.SegmentOperationJournalEntry_Started{
 			Started: &segmentsv1.SegmentOperation{
 				Id: o.id,
 				Operation: &segmentsv1.SegmentOperation_Add{
@@ -45,9 +45,9 @@ func (o *AddSegmentOperation) StartJournalEntry() *segmentsv1.SegmentJournalEntr
 	return entry
 }
 
-func (o *AddSegmentOperation) CompletedJournalEntry() *segmentsv1.SegmentJournalEntry {
-	entry := &segmentsv1.SegmentJournalEntry{
-		Entry: &segmentsv1.SegmentJournalEntry_Completed{
+func (o *AddSegmentOperation) CompletedJournalEntry() *segmentsv1.SegmentOperationJournalEntry {
+	entry := &segmentsv1.SegmentOperationJournalEntry{
+		Entry: &segmentsv1.SegmentOperationJournalEntry_Completed{
 			Completed: o.id,
 		},
 	}

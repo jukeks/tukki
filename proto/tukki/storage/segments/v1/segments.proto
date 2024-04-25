@@ -9,26 +9,17 @@ message Segment {
     string filename = 2;
 }
 
-message AddSegment {
+message SegmentAdded {
     Segment segment = 1;
 }
 
-message MergeSegments {
-    Segment new_segment = 1;
-    repeated Segment segments_to_merge = 2;
-}
-
-message SegmentOperation {
-    uint64 id = 1;
-    oneof operation {
-        AddSegment add = 2;
-        MergeSegments merge = 3;
-    }
+message SegmentRemoved {
+    Segment segment = 1;
 }
 
 message SegmentJournalEntry {
     oneof entry {
-        SegmentOperation started = 1;
-        uint64 completed = 2;
+        SegmentAdded added = 1;
+        SegmentRemoved removed = 2;
     }
 }
