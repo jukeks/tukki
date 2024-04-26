@@ -69,9 +69,6 @@ func (o *AddSegmentOperation) Execute() error {
 	err = w.WriteFromIterator(o.memtable.Iterate())
 	if err != nil {
 		log.Printf("failed to write sstable from memtable: %v", err)
-		// best effort cleanup
-		f.Close()
-		os.Remove(path)
 		return err
 	}
 
