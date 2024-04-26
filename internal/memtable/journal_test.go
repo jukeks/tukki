@@ -55,7 +55,7 @@ func TestJournal(t *testing.T) {
 func TestNewJournal(t *testing.T) {
 	mt := memtable.NewMemtable()
 	dbDir := testutil.EnsureTempDirectory("test-tukki-" + randstr.String(10))
-	j, err := memtable.NewJournal(dbDir, mt)
+	j, err := memtable.NewJournal(dbDir, "memtable.journal", mt)
 	if err != nil {
 		t.Fatalf("failed to create journal: %v", err)
 	}
@@ -76,7 +76,7 @@ func TestNewJournal(t *testing.T) {
 	j.Close()
 
 	mt = memtable.NewMemtable()
-	journal, err := memtable.NewJournal(dbDir, mt)
+	journal, err := memtable.NewJournal(dbDir, "memtable.journal", mt)
 	if err != nil {
 		t.Fatalf("failed to create journal reader: %v", err)
 	}

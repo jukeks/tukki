@@ -11,11 +11,11 @@ type MembtableJournal struct {
 	journal *journal.Journal
 }
 
-func NewJournal(dbDir string, mt Memtable) (*MembtableJournal, error) {
+func NewJournal(dbDir, journalName string, mt Memtable) (*MembtableJournal, error) {
 	handle := func(r *journal.JournalReader) error {
 		return readJournal(r, mt)
 	}
-	j, err := journal.OpenJournal(dbDir, "memtable.journal", handle)
+	j, err := journal.OpenJournal(dbDir, journalName, handle)
 	if err != nil {
 		return nil, err
 	}

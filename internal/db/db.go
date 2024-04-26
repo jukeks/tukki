@@ -14,7 +14,7 @@ type Database struct {
 func NewDatabase(dbDir string) *Database {
 	mt := memtable.NewMemtable()
 
-	journal, err := memtable.NewJournal(dbDir, mt)
+	journal, err := memtable.NewJournal(dbDir, "memtable.journal", mt)
 	if err != nil {
 		log.Fatalf("failed to create journal: %v", err)
 	}
