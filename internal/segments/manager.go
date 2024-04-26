@@ -1,18 +1,11 @@
 package segments
 
-import "github.com/jukeks/tukki/internal/segments/operation"
-
-type Segment struct {
-	Id       uint64
-	Filename string
-}
-
 type SegmentManager struct {
 	segmentJournal   *SegmentJournal
-	operationJournal *operation.SegmentOperationJournal
+	operationJournal *SegmentOperationJournal
 
-	segments   map[uint64]Segment
-	operations map[uint64]operation.SegmentOperation
+	segments   map[SegmentId]Segment
+	operations map[OperationId]SegmentOperation
 }
 
 func NewSegmentManager(dbDir string) (*SegmentManager, error) {
@@ -21,7 +14,7 @@ func NewSegmentManager(dbDir string) (*SegmentManager, error) {
 		return nil, err
 	}
 
-	operationJournal, operations, err := operation.OpenSegmentOperationJournal(dbDir)
+	operationJournal, operations, err := OpenSegmentOperationJournal(dbDir)
 	if err != nil {
 		return nil, err
 	}

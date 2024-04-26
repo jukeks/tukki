@@ -1,4 +1,4 @@
-package operation
+package segments
 
 import (
 	"log"
@@ -9,7 +9,7 @@ import (
 )
 
 type MergeSegmentsOperation struct {
-	id              uint64
+	id              OperationId
 	segmentsToMerge []Segment
 	mergedSegment   Segment
 }
@@ -21,14 +21,14 @@ func NewMergeSegmentsOperation(segmentsToMerge []Segment, mergedSegment Segment)
 	}
 }
 
-func (o *MergeSegmentsOperation) Id() uint64 {
+func (o *MergeSegmentsOperation) Id() OperationId {
 	return o.id
 }
 
 func (o *MergeSegmentsOperation) StartJournalEntry() *segmentsv1.SegmentOperationJournalEntry {
 	mergeOperation := &segmentsv1.MergeSegments{
 		NewSegment: &segmentsv1.Segment{
-			Id:       o.mergedSegment.Id,
+			Id:       uint64(o.mergedSegment.Id),
 			Filename: o.mergedSegment.Filename,
 		},
 	}
@@ -37,7 +37,7 @@ func (o *MergeSegmentsOperation) StartJournalEntry() *segmentsv1.SegmentOperatio
 		mergeOperation.SegmentsToMerge = append(
 			mergeOperation.SegmentsToMerge,
 			&segmentsv1.Segment{
-				Id:       segment.Id,
+				Id:       uint64(segment.Id),
 				Filename: segment.Filename,
 			})
 	}
@@ -45,7 +45,7 @@ func (o *MergeSegmentsOperation) StartJournalEntry() *segmentsv1.SegmentOperatio
 	entry := &segmentsv1.SegmentOperationJournalEntry{
 		Entry: &segmentsv1.SegmentOperationJournalEntry_Started{
 			Started: &segmentsv1.SegmentOperation{
-				Id: o.id,
+				Id: uint64(o.id),
 				Operation: &segmentsv1.SegmentOperation_Merge{
 					Merge: mergeOperation,
 				},
@@ -59,7 +59,7 @@ func (o *MergeSegmentsOperation) StartJournalEntry() *segmentsv1.SegmentOperatio
 func (o *MergeSegmentsOperation) CompletedJournalEntry() *segmentsv1.SegmentOperationJournalEntry {
 	entry := &segmentsv1.SegmentOperationJournalEntry{
 		Entry: &segmentsv1.SegmentOperationJournalEntry_Completed{
-			Completed: o.id,
+			Completed: uint64(o.id),
 		},
 	}
 

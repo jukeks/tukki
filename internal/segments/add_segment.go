@@ -1,4 +1,4 @@
-package operation
+package segments
 
 import (
 	"log"
@@ -10,7 +10,7 @@ import (
 )
 
 type AddSegmentOperation struct {
-	id       uint64
+	id       OperationId
 	segment  Segment
 	memtable memtable.Memtable
 }
@@ -22,7 +22,7 @@ func NewAddSegmentOperation(segment Segment, memtable memtable.Memtable) *AddSeg
 	}
 }
 
-func (o *AddSegmentOperation) Id() uint64 {
+func (o *AddSegmentOperation) Id() OperationId {
 	return o.id
 }
 
@@ -30,11 +30,11 @@ func (o *AddSegmentOperation) StartJournalEntry() *segmentsv1.SegmentOperationJo
 	entry := &segmentsv1.SegmentOperationJournalEntry{
 		Entry: &segmentsv1.SegmentOperationJournalEntry_Started{
 			Started: &segmentsv1.SegmentOperation{
-				Id: o.id,
+				Id: uint64(o.id),
 				Operation: &segmentsv1.SegmentOperation_Add{
 					Add: &segmentsv1.AddSegment{
 						Segment: &segmentsv1.Segment{
-							Id:       o.segment.Id,
+							Id:       uint64(o.segment.Id),
 							Filename: o.segment.Filename,
 						},
 					},
@@ -48,7 +48,7 @@ func (o *AddSegmentOperation) StartJournalEntry() *segmentsv1.SegmentOperationJo
 func (o *AddSegmentOperation) CompletedJournalEntry() *segmentsv1.SegmentOperationJournalEntry {
 	entry := &segmentsv1.SegmentOperationJournalEntry{
 		Entry: &segmentsv1.SegmentOperationJournalEntry_Completed{
-			Completed: o.id,
+			Completed: uint64(o.id),
 		},
 	}
 	return entry

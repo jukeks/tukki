@@ -11,11 +11,11 @@ type SegmentJournal struct {
 	journal *journal.Journal
 }
 
-func OpenSegmentJournal(dbDir string) (*SegmentJournal, map[uint64]Segment, error) {
-	var segments map[uint64]Segment
+func OpenSegmentJournal(dbDir string) (*SegmentJournal, map[SegmentId]Segment, error) {
+	var segments map[SegmentId]Segment
 	handle := func(r *journal.JournalReader) error {
 		var err error
-		segments, err = readJournal(r)
+		segments, err = readSegmentJournal(r)
 		return err
 	}
 
@@ -27,8 +27,8 @@ func OpenSegmentJournal(dbDir string) (*SegmentJournal, map[uint64]Segment, erro
 	return &SegmentJournal{j}, segments, nil
 }
 
-func readJournal(r *journal.JournalReader) (map[uint64]Segment, error) {
-	segmentMap := make(map[uint64]Segment)
+func readSegmentJournal(r *journal.JournalReader) (map[SegmentId]Segment, error) {
+	segmentMap := make(map[SegmentId]Segment)
 	for {
 		journalEntry := &segmentsv1.SegmentJournalEntry{}
 		err := r.Read(journalEntry)
@@ -42,14 +42,14 @@ func readJournal(r *journal.JournalReader) (map[uint64]Segment, error) {
 		added := journalEntry.GetAdded()
 		if added != nil {
 			segment := Segment{
-				Id:       added.Segment.Id,
+				Id:       SegmentId(added.Segment.Id),
 				Filename: added.Segment.Filename,
 			}
 			segmentMap[segment.Id] = segment
 		}
 		removed := journalEntry.GetRemoved()
 		if removed != nil {
-			delete(segmentMap, removed.Segment.Id)
+			delete(segmentMap, SegmentId(removed.Segment.Id))
 		}
 	}
 

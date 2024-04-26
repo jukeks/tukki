@@ -1,14 +1,11 @@
-package operation
+package segments
 
 import segmentsv1 "github.com/jukeks/tukki/proto/gen/tukki/storage/segments/v1"
 
-type Segment struct {
-	Id       uint64
-	Filename string
-}
+type OperationId uint64
 
 type SegmentOperation interface {
-	Id() uint64
+	Id() OperationId
 	StartJournalEntry() *segmentsv1.SegmentOperationJournalEntry
 	Execute() error
 	CompletedJournalEntry() *segmentsv1.SegmentOperationJournalEntry

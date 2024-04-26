@@ -1,4 +1,4 @@
-package operation
+package segments
 
 import (
 	"io"
@@ -11,11 +11,11 @@ type SegmentOperationJournal struct {
 	journal *journal.Journal
 }
 
-func OpenSegmentOperationJournal(dbDir string) (*SegmentOperationJournal, map[uint64]SegmentOperation, error) {
-	var segmentOperationsMap map[uint64]SegmentOperation
+func OpenSegmentOperationJournal(dbDir string) (*SegmentOperationJournal, map[OperationId]SegmentOperation, error) {
+	var segmentOperationsMap map[OperationId]SegmentOperation
 	handle := func(r *journal.JournalReader) error {
 		var err error
-		segmentOperationsMap, err = readJournal(r)
+		segmentOperationsMap, err = readOperationJournal(r)
 		return err
 	}
 
@@ -27,8 +27,8 @@ func OpenSegmentOperationJournal(dbDir string) (*SegmentOperationJournal, map[ui
 	return &SegmentOperationJournal{j}, segmentOperationsMap, nil
 }
 
-func readJournal(r *journal.JournalReader) (map[uint64]SegmentOperation, error) {
-	operations := make(map[uint64]SegmentOperation)
+func readOperationJournal(r *journal.JournalReader) (map[OperationId]SegmentOperation, error) {
+	operations := make(map[OperationId]SegmentOperation)
 	for {
 		journalEntry := &segmentsv1.SegmentOperationJournalEntry{}
 		err := r.Read(journalEntry)
@@ -45,7 +45,7 @@ func readJournal(r *journal.JournalReader) (map[uint64]SegmentOperation, error) 
 			operation := segmentOperationFromProto(started)
 			operations[operation.Id()] = operation
 		case *segmentsv1.SegmentOperationJournalEntry_Completed:
-			completedId := journalEntry.GetCompleted()
+			completedId := OperationId(journalEntry.GetCompleted())
 			delete(operations, completedId)
 		}
 	}
@@ -58,9 +58,9 @@ func segmentOperationFromProto(proto *segmentsv1.SegmentOperation) SegmentOperat
 	case *segmentsv1.SegmentOperation_Add:
 		addOperation := proto.GetAdd()
 		return &AddSegmentOperation{
-			id: proto.Id,
+			id: OperationId(proto.Id),
 			segment: Segment{
-				Id:       addOperation.Segment.Id,
+				Id:       SegmentId(addOperation.Segment.Id),
 				Filename: addOperation.Segment.Filename,
 			},
 		}
@@ -69,15 +69,15 @@ func segmentOperationFromProto(proto *segmentsv1.SegmentOperation) SegmentOperat
 		segmentsToMerge := make([]Segment, len(mergeOperation.SegmentsToMerge))
 		for i, segmentProto := range mergeOperation.SegmentsToMerge {
 			segmentsToMerge[i] = Segment{
-				Id:       segmentProto.Id,
+				Id:       SegmentId(segmentProto.Id),
 				Filename: segmentProto.Filename,
 			}
 		}
 		return &MergeSegmentsOperation{
-			id:              proto.Id,
+			id:              OperationId(proto.Id),
 			segmentsToMerge: segmentsToMerge,
 			mergedSegment: Segment{
-				Id:       mergeOperation.NewSegment.Id,
+				Id:       SegmentId(mergeOperation.NewSegment.Id),
 				Filename: mergeOperation.NewSegment.Filename,
 			},
 		}
