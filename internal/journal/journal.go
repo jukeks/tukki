@@ -79,25 +79,25 @@ func OpenJournal(dbDir string, journalName string, existingHandler ExistingJourn
 	var err error
 
 	if _, err = os.Stat(journalPath); err == nil {
-		log.Printf("journal file exists, reading journal")
+		log.Printf("journal file exists %s, reading journal", journalPath)
 		// read journal
 		journalFile, err = os.Open(journalPath)
 		if err != nil {
-			return nil, fmt.Errorf("failed to open journal file: %w", err)
+			return nil, fmt.Errorf("failed to open journal file %s: %w", journalPath, err)
 		}
 
 		journalReader := NewJournalReader(journalFile)
 		err = existingHandler(journalReader)
 		journalFile.Close()
 		if err != nil {
-			return nil, fmt.Errorf("failed to read journal: %w", err)
+			return nil, fmt.Errorf("failed to read journal file %s: %w", journalPath, err)
 		}
 
 		// open journal for appending
 		log.Printf("opening journal for appending")
 		journalFile, err = os.OpenFile(journalPath, os.O_APPEND|os.O_WRONLY, 0644)
 		if err != nil {
-			return nil, fmt.Errorf("failed to open journal file: %w", err)
+			return nil, fmt.Errorf("failed to open journal file %s: %w", journalPath, err)
 		}
 	} else {
 		log.Printf("journal file does not exist, creating %s", journalPath)
