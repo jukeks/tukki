@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"path/filepath"
 
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -51,4 +52,11 @@ func ReadLengthPrefixedProtobufMessage(reader io.Reader, message protoreflect.Pr
 	}
 
 	return nil
+}
+
+func GetPath(dbDir, filename string) string {
+	if dbDir == "" {
+		panic("dbDir is empty")
+	}
+	return filepath.Join(dbDir, filename)
 }

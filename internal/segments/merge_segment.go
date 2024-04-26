@@ -5,17 +5,20 @@ import (
 	"os"
 
 	"github.com/jukeks/tukki/internal/sstable"
+	"github.com/jukeks/tukki/internal/storage"
 	segmentsv1 "github.com/jukeks/tukki/proto/gen/tukki/storage/segments/v1"
 )
 
 type MergeSegmentsOperation struct {
 	id              OperationId
+	dbDir           string
 	segmentsToMerge []Segment
 	mergedSegment   Segment
 }
 
-func NewMergeSegmentsOperation(segmentsToMerge []Segment, mergedSegment Segment) *MergeSegmentsOperation {
+func NewMergeSegmentsOperation(dbDir string, segmentsToMerge []Segment, mergedSegment Segment) *MergeSegmentsOperation {
 	return &MergeSegmentsOperation{
+		dbDir:           dbDir,
 		segmentsToMerge: segmentsToMerge,
 		mergedSegment:   mergedSegment,
 	}
@@ -67,13 +70,15 @@ func (o *MergeSegmentsOperation) CompletedJournalEntry() *segmentsv1.SegmentOper
 }
 
 func (o *MergeSegmentsOperation) Execute() error {
-	mergedFile, err := os.Create(o.mergedSegment.Filename)
+	mergedPath := storage.GetPath(o.dbDir, o.mergedSegment.Filename)
+	mergedFile, err := os.Create(mergedPath)
 	if err != nil {
 		log.Printf("failed to create file: %v", err)
 		return err
 	}
 
-	aFile, err := os.Open(o.segmentsToMerge[0].Filename)
+	aPath := storage.GetPath(o.dbDir, o.segmentsToMerge[0].Filename)
+	aFile, err := os.Open(aPath)
 	if err != nil {
 		log.Printf("failed to open file: %v", err)
 		return err
@@ -81,7 +86,8 @@ func (o *MergeSegmentsOperation) Execute() error {
 	defer aFile.Close()
 	aReader := sstable.NewSSTableReader(aFile)
 
-	bFile, err := os.Open(o.segmentsToMerge[1].Filename)
+	bPath := storage.GetPath(o.dbDir, o.segmentsToMerge[1].Filename)
+	bFile, err := os.Open(bPath)
 	if err != nil {
 		log.Printf("failed to open file: %v", err)
 		return err

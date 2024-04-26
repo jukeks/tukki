@@ -85,3 +85,11 @@ func segmentOperationFromProto(proto *segmentsv1.SegmentOperation) SegmentOperat
 
 	return nil
 }
+
+func (soj *SegmentOperationJournal) Write(entry *segmentsv1.SegmentOperationJournalEntry) error {
+	return soj.journal.Writer.Write(entry)
+}
+
+func (soj *SegmentOperationJournal) Close() error {
+	return soj.journal.Close()
+}

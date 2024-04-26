@@ -11,7 +11,7 @@ type MembtableJournal struct {
 	journal *journal.Journal
 }
 
-func NewJournal(dbDir, journalName string, mt Memtable) (*MembtableJournal, error) {
+func OpenWal(dbDir, journalName string, mt Memtable) (*MembtableJournal, error) {
 	handle := func(r *journal.JournalReader) error {
 		return readJournal(r, mt)
 	}

@@ -118,3 +118,7 @@ func (sj *SegmentJournal) RemoveSegment(id SegmentId) error {
 
 	return sj.journal.Writer.Write(entry)
 }
+
+func (sj *SegmentJournal) Close() error {
+	return sj.journal.Close()
+}

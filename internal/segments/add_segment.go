@@ -6,17 +6,20 @@ import (
 
 	"github.com/jukeks/tukki/internal/memtable"
 	"github.com/jukeks/tukki/internal/sstable"
+	"github.com/jukeks/tukki/internal/storage"
 	segmentsv1 "github.com/jukeks/tukki/proto/gen/tukki/storage/segments/v1"
 )
 
 type AddSegmentOperation struct {
 	id       OperationId
+	dbDir    string
 	segment  Segment
 	memtable memtable.Memtable
 }
 
-func NewAddSegmentOperation(segment Segment, memtable memtable.Memtable) *AddSegmentOperation {
+func NewAddSegmentOperation(dbDir string, segment Segment, memtable memtable.Memtable) *AddSegmentOperation {
 	return &AddSegmentOperation{
+		dbDir:    dbDir,
 		segment:  segment,
 		memtable: memtable,
 	}
@@ -55,7 +58,8 @@ func (o *AddSegmentOperation) CompletedJournalEntry() *segmentsv1.SegmentOperati
 }
 
 func (o *AddSegmentOperation) Execute() error {
-	f, err := os.Create(o.segment.Filename)
+	path := storage.GetPath(o.dbDir, o.segment.Filename)
+	f, err := os.Create(path)
 	if err != nil {
 		log.Printf("failed to create file: %v", err)
 		return err
@@ -67,7 +71,7 @@ func (o *AddSegmentOperation) Execute() error {
 		log.Printf("failed to write sstable from memtable: %v", err)
 		// best effort cleanup
 		f.Close()
-		os.Remove(o.segment.Filename)
+		os.Remove(path)
 		return err
 	}
 

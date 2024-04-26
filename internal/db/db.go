@@ -9,7 +9,7 @@ import (
 
 type Database struct {
 	memtable       memtable.Memtable
-	journal        *memtable.MembtableJournal
+	wal            *memtable.MembtableJournal
 	segmentManager *segments.SegmentManager
 }
 
@@ -22,20 +22,20 @@ func OpenDatabase(dbDir string) *Database {
 	ongoing := segmentsManager.GetOnGoingSegment()
 
 	mt := memtable.NewMemtable()
-	journal, err := memtable.NewJournal(dbDir, ongoing.JournalFilename, mt)
+	wal, err := memtable.OpenWal(dbDir, ongoing.JournalFilename, mt)
 	if err != nil {
 		log.Fatalf("failed to create journal: %v", err)
 	}
 
 	return &Database{
 		memtable:       mt,
-		journal:        journal,
+		wal:            wal,
 		segmentManager: segmentsManager,
 	}
 }
 
 func (d *Database) Set(key, value string) error {
-	err := d.journal.Set(key, value)
+	err := d.wal.Set(key, value)
 	if err != nil {
 		return err
 	}
@@ -58,7 +58,7 @@ func (d *Database) Get(key string) (string, error) {
 }
 
 func (d *Database) Delete(key string) error {
-	err := d.journal.Delete(key)
+	err := d.wal.Delete(key)
 	if err != nil {
 		return err
 	}
@@ -68,5 +68,10 @@ func (d *Database) Delete(key string) error {
 }
 
 func (d *Database) Close() error {
-	return d.journal.Close()
+	err := d.wal.Close()
+	if err != nil {
+		return err
+	}
+
+	return d.segmentManager.Close()
 }

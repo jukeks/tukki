@@ -6,7 +6,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"path/filepath"
 
 	"github.com/jukeks/tukki/internal/storage"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -73,7 +72,7 @@ type Journal struct {
 type ExistingJournalHandler func(r *JournalReader) error
 
 func OpenJournal(dbDir string, journalName string, existingHandler ExistingJournalHandler) (*Journal, error) {
-	journalPath := filepath.Join(dbDir, journalName)
+	journalPath := storage.GetPath(dbDir, journalName)
 
 	var journalFile *os.File
 	var err error
@@ -111,4 +110,8 @@ func OpenJournal(dbDir string, journalName string, existingHandler ExistingJourn
 		File:   journalFile,
 		Writer: NewJournalWriter(journalFile),
 	}, nil
+}
+
+func (j *Journal) Close() error {
+	return j.File.Close()
 }
