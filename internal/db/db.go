@@ -4,24 +4,33 @@ import (
 	"log"
 
 	"github.com/jukeks/tukki/internal/memtable"
+	"github.com/jukeks/tukki/internal/segments"
 )
 
 type Database struct {
-	memtable memtable.Memtable
-	journal  *memtable.MembtableJournal
+	memtable       memtable.Memtable
+	journal        *memtable.MembtableJournal
+	segmentManager *segments.SegmentManager
 }
 
-func NewDatabase(dbDir string) *Database {
-	mt := memtable.NewMemtable()
+func OpenDatabase(dbDir string) *Database {
+	segmentsManager, err := segments.OpenDatabase(dbDir)
+	if err != nil {
+		log.Fatalf("failed to open segments manager: %v", err)
+	}
 
-	journal, err := memtable.NewJournal(dbDir, "memtable.journal", mt)
+	ongoing := segmentsManager.GetOnGoingSegment()
+
+	mt := memtable.NewMemtable()
+	journal, err := memtable.NewJournal(dbDir, ongoing.JournalFilename, mt)
 	if err != nil {
 		log.Fatalf("failed to create journal: %v", err)
 	}
 
 	return &Database{
-		memtable: mt,
-		journal:  journal,
+		memtable:       mt,
+		journal:        journal,
+		segmentManager: segmentsManager,
 	}
 }
 

@@ -10,7 +10,7 @@ import (
 
 func TestDB(t *testing.T) {
 	dbDir := testutil.EnsureTempDirectory("test-tukki-" + randstr.String(10))
-	database := db.NewDatabase(dbDir)
+	database := db.OpenDatabase(dbDir)
 
 	key := randstr.String(10)
 	value := randstr.String(16 * 1024)
@@ -28,7 +28,7 @@ func TestDB(t *testing.T) {
 	database.Close()
 
 	// reopen database
-	database = db.NewDatabase(dbDir)
+	database = db.OpenDatabase(dbDir)
 	storedValue, err = database.Get(key)
 	if err != nil {
 		t.Fatalf("failed to get value: %v", err)
@@ -43,7 +43,7 @@ func TestDB(t *testing.T) {
 
 func TestDelete(t *testing.T) {
 	dbDir := testutil.EnsureTempDirectory("test-tukki-" + randstr.String(10))
-	database := db.NewDatabase(dbDir)
+	database := db.OpenDatabase(dbDir)
 
 	key := randstr.String(10)
 	value := randstr.String(16 * 1024)

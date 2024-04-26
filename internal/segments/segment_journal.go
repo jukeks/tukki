@@ -11,11 +11,11 @@ type SegmentJournal struct {
 	journal *journal.Journal
 }
 
-func OpenSegmentJournal(dbDir string) (*SegmentJournal, map[SegmentId]Segment, error) {
-	var segments map[SegmentId]Segment
+func OpenSegmentJournal(dbDir string) (*SegmentJournal, *CurrentSegments, error) {
+	var currentSegments *CurrentSegments
 	handle := func(r *journal.JournalReader) error {
 		var err error
-		segments, err = readSegmentJournal(r)
+		currentSegments, err = readSegmentJournal(r)
 		return err
 	}
 
@@ -24,10 +24,21 @@ func OpenSegmentJournal(dbDir string) (*SegmentJournal, map[SegmentId]Segment, e
 		return nil, nil, err
 	}
 
-	return &SegmentJournal{j}, segments, nil
+	return &SegmentJournal{j}, currentSegments, nil
 }
 
-func readSegmentJournal(r *journal.JournalReader) (map[SegmentId]Segment, error) {
+type OngoingSegment struct {
+	Id              SegmentId
+	JournalFilename string
+}
+
+type CurrentSegments struct {
+	Ongoing  OngoingSegment
+	Segments map[SegmentId]Segment
+}
+
+func readSegmentJournal(r *journal.JournalReader) (*CurrentSegments, error) {
+	var ongoing OngoingSegment
 	segmentMap := make(map[SegmentId]Segment)
 	for {
 		journalEntry := &segmentsv1.SegmentJournalEntry{}
@@ -39,19 +50,71 @@ func readSegmentJournal(r *journal.JournalReader) (map[SegmentId]Segment, error)
 			return nil, err
 		}
 
-		added := journalEntry.GetAdded()
-		if added != nil {
+		switch journalEntry.Entry.(type) {
+		case *segmentsv1.SegmentJournalEntry_Started:
+			started := journalEntry.GetStarted()
+			ongoing = OngoingSegment{
+				Id:              SegmentId(started.Id),
+				JournalFilename: started.JournalFilename,
+			}
+		case *segmentsv1.SegmentJournalEntry_Added:
+			added := journalEntry.GetAdded()
 			segment := Segment{
 				Id:       SegmentId(added.Segment.Id),
 				Filename: added.Segment.Filename,
 			}
 			segmentMap[segment.Id] = segment
-		}
-		removed := journalEntry.GetRemoved()
-		if removed != nil {
+
+		case *segmentsv1.SegmentJournalEntry_Removed:
+			removed := journalEntry.GetRemoved()
 			delete(segmentMap, SegmentId(removed.Segment.Id))
 		}
 	}
 
-	return segmentMap, nil
+	return &CurrentSegments{
+		Ongoing:  ongoing,
+		Segments: segmentMap,
+	}, nil
+}
+
+func (sj *SegmentJournal) StartSegment(id SegmentId, journalFilename string) error {
+	entry := &segmentsv1.SegmentJournalEntry{
+		Entry: &segmentsv1.SegmentJournalEntry_Started{
+			Started: &segmentsv1.SegmentStarted{
+				Id:              uint64(id),
+				JournalFilename: journalFilename,
+			},
+		},
+	}
+
+	return sj.journal.Writer.Write(entry)
+}
+
+func (sj *SegmentJournal) AddSegment(segment Segment) error {
+	entry := &segmentsv1.SegmentJournalEntry{
+		Entry: &segmentsv1.SegmentJournalEntry_Added{
+			Added: &segmentsv1.SegmentAdded{
+				Segment: &segmentsv1.Segment{
+					Id:       uint64(segment.Id),
+					Filename: segment.Filename,
+				},
+			},
+		},
+	}
+
+	return sj.journal.Writer.Write(entry)
+}
+
+func (sj *SegmentJournal) RemoveSegment(id SegmentId) error {
+	entry := &segmentsv1.SegmentJournalEntry{
+		Entry: &segmentsv1.SegmentJournalEntry_Removed{
+			Removed: &segmentsv1.SegmentRemoved{
+				Segment: &segmentsv1.Segment{
+					Id: uint64(id),
+				},
+			},
+		},
+	}
+
+	return sj.journal.Writer.Write(entry)
 }

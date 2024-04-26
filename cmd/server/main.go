@@ -20,7 +20,7 @@ func main() {
 		log.Fatalf("failed to create db dir: %v", err)
 	}
 
-	db := db.NewDatabase(dbDir)
+	db := db.OpenDatabase(dbDir)
 	repl(db)
 }
 
