@@ -4,6 +4,7 @@ import (
 	"io"
 
 	"github.com/jukeks/tukki/internal/journal"
+	"github.com/jukeks/tukki/internal/storage"
 	segmentsv1 "github.com/jukeks/tukki/proto/gen/tukki/storage/segments/v1"
 )
 
@@ -29,7 +30,7 @@ func OpenSegmentJournal(dbDir string) (*SegmentJournal, *CurrentSegments, error)
 
 type OngoingSegment struct {
 	Id              SegmentId
-	JournalFilename string
+	JournalFilename storage.Filename
 }
 
 type CurrentSegments struct {
@@ -55,13 +56,13 @@ func readSegmentJournal(r *journal.JournalReader) (*CurrentSegments, error) {
 			started := journalEntry.GetStarted()
 			ongoing = OngoingSegment{
 				Id:              SegmentId(started.Id),
-				JournalFilename: started.JournalFilename,
+				JournalFilename: storage.Filename(started.JournalFilename),
 			}
 		case *segmentsv1.SegmentJournalEntry_Added:
 			added := journalEntry.GetAdded()
 			segment := Segment{
 				Id:       SegmentId(added.Segment.Id),
-				Filename: added.Segment.Filename,
+				Filename: storage.Filename(added.Segment.Filename),
 			}
 			segmentMap[segment.Id] = segment
 
@@ -77,12 +78,12 @@ func readSegmentJournal(r *journal.JournalReader) (*CurrentSegments, error) {
 	}, nil
 }
 
-func (sj *SegmentJournal) StartSegment(id SegmentId, journalFilename string) error {
+func (sj *SegmentJournal) StartSegment(id SegmentId, journalFilename storage.Filename) error {
 	entry := &segmentsv1.SegmentJournalEntry{
 		Entry: &segmentsv1.SegmentJournalEntry_Started{
 			Started: &segmentsv1.SegmentStarted{
 				Id:              uint64(id),
-				JournalFilename: journalFilename,
+				JournalFilename: string(journalFilename),
 			},
 		},
 	}
@@ -96,7 +97,7 @@ func (sj *SegmentJournal) AddSegment(segment Segment) error {
 			Added: &segmentsv1.SegmentAdded{
 				Segment: &segmentsv1.Segment{
 					Id:       uint64(segment.Id),
-					Filename: segment.Filename,
+					Filename: string(segment.Filename),
 				},
 			},
 		},

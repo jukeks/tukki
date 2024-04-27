@@ -4,6 +4,7 @@ import (
 	"io"
 
 	"github.com/jukeks/tukki/internal/journal"
+	"github.com/jukeks/tukki/internal/storage"
 	journalv1 "github.com/jukeks/tukki/proto/gen/tukki/storage/journal/v1"
 )
 
@@ -11,7 +12,7 @@ type MembtableJournal struct {
 	journal *journal.Journal
 }
 
-func OpenWal(dbDir, journalName string, mt Memtable) (*MembtableJournal, error) {
+func OpenWal(dbDir string, journalName storage.Filename, mt Memtable) (*MembtableJournal, error) {
 	handle := func(r *journal.JournalReader) error {
 		return readJournal(r, mt)
 	}

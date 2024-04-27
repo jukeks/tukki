@@ -4,6 +4,7 @@ import (
 	"io"
 
 	"github.com/jukeks/tukki/internal/journal"
+	"github.com/jukeks/tukki/internal/storage"
 	segmentsv1 "github.com/jukeks/tukki/proto/gen/tukki/storage/segments/v1"
 )
 
@@ -61,7 +62,7 @@ func segmentOperationFromProto(proto *segmentsv1.SegmentOperation) SegmentOperat
 			id: OperationId(proto.Id),
 			segment: Segment{
 				Id:       SegmentId(addOperation.Segment.Id),
-				Filename: addOperation.Segment.Filename,
+				Filename: storage.Filename(addOperation.Segment.Filename),
 			},
 		}
 	case *segmentsv1.SegmentOperation_Merge:
@@ -70,7 +71,7 @@ func segmentOperationFromProto(proto *segmentsv1.SegmentOperation) SegmentOperat
 		for i, segmentProto := range mergeOperation.SegmentsToMerge {
 			segmentsToMerge[i] = Segment{
 				Id:       SegmentId(segmentProto.Id),
-				Filename: segmentProto.Filename,
+				Filename: storage.Filename(segmentProto.Filename),
 			}
 		}
 		return &MergeSegmentsOperation{
@@ -78,7 +79,7 @@ func segmentOperationFromProto(proto *segmentsv1.SegmentOperation) SegmentOperat
 			segmentsToMerge: segmentsToMerge,
 			mergedSegment: Segment{
 				Id:       SegmentId(mergeOperation.NewSegment.Id),
-				Filename: mergeOperation.NewSegment.Filename,
+				Filename: storage.Filename(mergeOperation.NewSegment.Filename),
 			},
 		}
 	}

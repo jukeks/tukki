@@ -54,9 +54,11 @@ func ReadLengthPrefixedProtobufMessage(reader io.Reader, message protoreflect.Pr
 	return nil
 }
 
-func GetPath(dbDir, filename string) string {
+type Filename string
+
+func GetPath(dbDir string, filename Filename) string {
 	if dbDir == "" {
 		panic("dbDir is empty")
 	}
-	return filepath.Join(dbDir, filename)
+	return filepath.Join(dbDir, string(filename))
 }

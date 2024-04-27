@@ -32,7 +32,7 @@ func (o *MergeSegmentsOperation) StartJournalEntry() *segmentsv1.SegmentOperatio
 	mergeOperation := &segmentsv1.MergeSegments{
 		NewSegment: &segmentsv1.Segment{
 			Id:       uint64(o.mergedSegment.Id),
-			Filename: o.mergedSegment.Filename,
+			Filename: string(o.mergedSegment.Filename),
 		},
 	}
 
@@ -41,7 +41,7 @@ func (o *MergeSegmentsOperation) StartJournalEntry() *segmentsv1.SegmentOperatio
 			mergeOperation.SegmentsToMerge,
 			&segmentsv1.Segment{
 				Id:       uint64(segment.Id),
-				Filename: segment.Filename,
+				Filename: string(segment.Filename),
 			})
 	}
 

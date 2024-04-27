@@ -38,7 +38,7 @@ func (o *AddSegmentOperation) StartJournalEntry() *segmentsv1.SegmentOperationJo
 					Add: &segmentsv1.AddSegment{
 						Segment: &segmentsv1.Segment{
 							Id:       uint64(o.segment.Id),
-							Filename: o.segment.Filename,
+							Filename: string(o.segment.Filename),
 						},
 					},
 				},

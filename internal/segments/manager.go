@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/jukeks/tukki/internal/memtable"
+	"github.com/jukeks/tukki/internal/storage"
 )
 
 type SegmentManager struct {
@@ -55,12 +56,12 @@ func OpenDatabase(dbDir string) (*SegmentManager, error) {
 	}, nil
 }
 
-func getWalFilename(id SegmentId) string {
-	return fmt.Sprintf("wal-%d.journal", id)
+func getWalFilename(id SegmentId) storage.Filename {
+	return storage.Filename(fmt.Sprintf("wal-%d.journal", id))
 }
 
-func getSegmentFilename(id SegmentId) string {
-	return fmt.Sprintf("segment-%d", id)
+func getSegmentFilename(id SegmentId) storage.Filename {
+	return storage.Filename(fmt.Sprintf("segment-%d", id))
 }
 
 func (sm *SegmentManager) GetOnGoingSegment() OngoingSegment {
@@ -128,8 +129,8 @@ func (sm *SegmentManager) getNextSegmentId() SegmentId {
 	return sm.ongoing.Id + 1
 }
 
-func getMergedSegmentFilename(a, b SegmentId) string {
-	return fmt.Sprintf("segment-%d-%d", a, b)
+func getMergedSegmentFilename(a, b SegmentId) storage.Filename {
+	return storage.Filename(fmt.Sprintf("segment-%d-%d", a, b))
 }
 
 func (sm *SegmentManager) MergeSegments(a, b SegmentId) error {

@@ -71,7 +71,7 @@ type Journal struct {
 
 type ExistingJournalHandler func(r *JournalReader) error
 
-func OpenJournal(dbDir string, journalName string, existingHandler ExistingJournalHandler) (*Journal, error) {
+func OpenJournal(dbDir string, journalName storage.Filename, existingHandler ExistingJournalHandler) (*Journal, error) {
 	journalPath := storage.GetPath(dbDir, journalName)
 
 	var journalFile *os.File
