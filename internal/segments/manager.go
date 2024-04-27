@@ -138,7 +138,7 @@ func (sm *SegmentManager) MergeSegments(a, b SegmentId) error {
 	segmentB := sm.segments[b]
 
 	mergedSegment := Segment{
-		Id:       segmentA.Id,
+		Id:       segmentB.Id,
 		Filename: getMergedSegmentFilename(segmentA.Id, segmentB.Id),
 	}
 
