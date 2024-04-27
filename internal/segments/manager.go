@@ -45,6 +45,9 @@ func OpenDatabase(dbDir string) (*SegmentManager, error) {
 	if err != nil {
 		return nil, err
 	}
+	if operations == nil {
+		operations = make(map[OperationId]SegmentOperation)
+	}
 
 	return &SegmentManager{
 		dbDir:            dbDir,
