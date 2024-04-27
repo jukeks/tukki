@@ -12,11 +12,15 @@ type SegmentOperationJournal struct {
 	journal *journal.Journal
 }
 
-func OpenSegmentOperationJournal(dbDir string) (*SegmentOperationJournal, map[OperationId]SegmentOperation, error) {
-	var segmentOperationsMap map[OperationId]SegmentOperation
+func OpenSegmentOperationJournal(dbDir string) (
+	*SegmentOperationJournal,
+	*CurrentSegments,
+	error,
+) {
+	var currentSegments *CurrentSegments
 	handle := func(r *journal.JournalReader) error {
 		var err error
-		segmentOperationsMap, err = readOperationJournal(r)
+		currentSegments, err = readOperationJournal(r)
 		return err
 	}
 
@@ -25,11 +29,23 @@ func OpenSegmentOperationJournal(dbDir string) (*SegmentOperationJournal, map[Op
 		return nil, nil, err
 	}
 
-	return &SegmentOperationJournal{j}, segmentOperationsMap, nil
+	return &SegmentOperationJournal{j}, currentSegments, nil
 }
 
-func readOperationJournal(r *journal.JournalReader) (map[OperationId]SegmentOperation, error) {
+type CurrentSegments struct {
+	Ongoing    LiveSegment
+	Segments   map[SegmentId]Segment
+	Operations map[OperationId]SegmentOperation
+}
+
+func readOperationJournal(r *journal.JournalReader) (
+	*CurrentSegments,
+	error) {
+
 	operations := make(map[OperationId]SegmentOperation)
+	segments := make(map[SegmentId]Segment)
+	var ongoing *LiveSegment
+
 	for {
 		journalEntry := &segmentsv1.SegmentOperationJournalEntry{}
 		err := r.Read(journalEntry)
@@ -47,22 +63,57 @@ func readOperationJournal(r *journal.JournalReader) (map[OperationId]SegmentOper
 			operations[operation.Id()] = operation
 		case *segmentsv1.SegmentOperationJournalEntry_Completed:
 			completedId := OperationId(journalEntry.GetCompleted())
+			operation := operations[completedId]
+			switch operation.(type) {
+			case *AddSegmentOperation:
+				add := operation.(*AddSegmentOperation)
+				if add.completingSegment != nil {
+					segments[add.completingSegment.Segment.Id] = add.completingSegment.Segment
+				}
+				ongoing = add.newSegment
+			case *MergeSegmentsOperation:
+				merge := operation.(*MergeSegmentsOperation)
+				delete(segments, merge.segmentsToMerge[0].Id)
+				delete(segments, merge.segmentsToMerge[1].Id)
+				segments[merge.mergedSegment.Id] = merge.mergedSegment
+			}
+
 			delete(operations, completedId)
 		}
 	}
 
-	return operations, nil
+	return &CurrentSegments{
+		Ongoing:    *ongoing,
+		Segments:   segments,
+		Operations: operations,
+	}, nil
 }
 
 func segmentOperationFromProto(proto *segmentsv1.SegmentOperation) SegmentOperation {
 	switch proto.Operation.(type) {
 	case *segmentsv1.SegmentOperation_Add:
 		addOperation := proto.GetAdd()
+		completingSegmentPb := addOperation.CompletingSegment
+		var completingSegment *LiveSegment
+		if completingSegmentPb != nil {
+			completingSegment = &LiveSegment{
+				WalFilename: storage.Filename(completingSegmentPb.WalFilename),
+				Segment: Segment{
+					Id:       SegmentId(completingSegmentPb.Segment.Id),
+					Filename: storage.Filename(completingSegmentPb.Segment.Filename),
+				},
+			}
+		}
+		newSegmentPb := addOperation.NewSegment
 		return &AddSegmentOperation{
-			id: OperationId(proto.Id),
-			segment: Segment{
-				Id:       SegmentId(addOperation.Segment.Id),
-				Filename: storage.Filename(addOperation.Segment.Filename),
+			id:                OperationId(proto.Id),
+			completingSegment: completingSegment,
+			newSegment: &LiveSegment{
+				WalFilename: storage.Filename(newSegmentPb.WalFilename),
+				Segment: Segment{
+					Id:       SegmentId(newSegmentPb.Segment.Id),
+					Filename: storage.Filename(newSegmentPb.Segment.Filename),
+				},
 			},
 		}
 	case *segmentsv1.SegmentOperation_Merge:

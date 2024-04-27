@@ -16,12 +16,12 @@ func TestSegmentManager(t *testing.T) {
 	}
 
 	ongoing := sm.GetOnGoingSegment()
-	if ongoing.Id != 0 {
-		t.Fatalf("expected ongoing segment id to be 0, got %d", ongoing.Id)
+	if ongoing.Segment.Id != 0 {
+		t.Fatalf("expected ongoing segment id to be 0, got %d", ongoing.Segment.Id)
 	}
 
-	if ongoing.JournalFilename != "wal-0.journal" {
-		t.Fatalf("expected ongoing segment journal filename to be 'wal-0.journal', got '%s'", ongoing.JournalFilename)
+	if ongoing.WalFilename != "wal-0.journal" {
+		t.Fatalf("expected ongoing segment journal filename to be 'wal-0.journal', got '%s'", ongoing.WalFilename)
 	}
 
 	if len(sm.segments) != 0 {
@@ -33,7 +33,11 @@ func TestSegmentManager(t *testing.T) {
 	}
 
 	mt := memtable.NewMemtable()
-	mt.Insert("key1", "value1")
+	wal, err := memtable.OpenWal(dbDir, ongoing.WalFilename, mt)
+	if err != nil {
+		t.Fatalf("failed to open wal: %v", err)
+	}
+	writeToWalAndMemtable(t, wal, mt, "key1", "value1")
 
 	err = sm.SealCurrentSegment(mt)
 	if err != nil {
@@ -45,11 +49,11 @@ func TestSegmentManager(t *testing.T) {
 	}
 
 	ongoing = sm.GetOnGoingSegment()
-	if ongoing.Id != 1 {
-		t.Fatalf("expected ongoing segment id to be 1, got %d", ongoing.Id)
+	if ongoing.Segment.Id != 1 {
+		t.Fatalf("expected ongoing segment id to be 1, got %d", ongoing.Segment.Id)
 	}
-	if ongoing.JournalFilename != "wal-1.journal" {
-		t.Fatalf("expected ongoing segment journal filename to be 'wal-1.journal', got '%s'", ongoing.JournalFilename)
+	if ongoing.WalFilename != "wal-1.journal" {
+		t.Fatalf("expected ongoing segment journal filename to be 'wal-1.journal', got '%s'", ongoing.WalFilename)
 	}
 
 	err = sm.Close()
@@ -67,12 +71,22 @@ func TestSegmentManager(t *testing.T) {
 	}
 
 	ongoing = sm.GetOnGoingSegment()
-	if ongoing.Id != 1 {
-		t.Fatalf("expected ongoing segment id to be 1, got %d", ongoing.Id)
+	if ongoing.Segment.Id != 1 {
+		t.Fatalf("expected ongoing segment id to be 1, got %d", ongoing.Segment.Id)
 	}
-	if ongoing.JournalFilename != "wal-1.journal" {
-		t.Fatalf("expected ongoing segment journal filename to be 'wal-1.journal', got '%s'", ongoing.JournalFilename)
+	if ongoing.WalFilename != "wal-1.journal" {
+		t.Fatalf("expected ongoing segment journal filename to be 'wal-1.journal', got '%s'",
+			ongoing.WalFilename)
 	}
+}
+
+func writeToWalAndMemtable(t *testing.T, wal *memtable.MembtableJournal, mt memtable.Memtable, key, value string) {
+	err := wal.Set(key, value)
+	if err != nil {
+		t.Fatalf("failed to write to wal: %v", err)
+	}
+
+	mt.Insert(key, value)
 }
 
 func TestMergeSegments(t *testing.T) {
@@ -82,18 +96,34 @@ func TestMergeSegments(t *testing.T) {
 		t.Fatalf("failed to open segment manager: %v", err)
 	}
 
+	ongoing := sm.GetOnGoingSegment()
 	mt := memtable.NewMemtable()
-	mt.Insert("key1", "value1")
-	mt.Insert("key2", "value2")
+	wal, err := memtable.OpenWal(dbDir, ongoing.WalFilename, mt)
+	if err != nil {
+		t.Fatalf("failed to open wal: %v", err)
+	}
+	writeToWalAndMemtable(t, wal, mt, "key1", "value1")
+	writeToWalAndMemtable(t, wal, mt, "key2", "value2")
+	wal.Close()
 
 	err = sm.SealCurrentSegment(mt)
 	if err != nil {
 		t.Fatalf("failed to seal current segment: %v", err)
 	}
 
+	ongoing = sm.GetOnGoingSegment()
+	if ongoing.Segment.Id != 1 {
+		t.Fatalf("expected ongoing segment id to be 1, got %d", ongoing.Segment.Id)
+	}
+
 	mt = memtable.NewMemtable()
-	mt.Insert("key3", "value3")
-	mt.Insert("key4", "value4")
+	wal, err = memtable.OpenWal(dbDir, ongoing.WalFilename, mt)
+	if err != nil {
+		t.Fatalf("failed to open wal: %v", err)
+	}
+	writeToWalAndMemtable(t, wal, mt, "key1", "value1")
+	writeToWalAndMemtable(t, wal, mt, "key2", "value2")
+	wal.Close()
 
 	err = sm.SealCurrentSegment(mt)
 	if err != nil {
@@ -102,6 +132,11 @@ func TestMergeSegments(t *testing.T) {
 
 	if len(sm.segments) != 2 {
 		t.Fatalf("expected segments map to have 2 element, got %v", sm.segments)
+	}
+
+	ongoing = sm.GetOnGoingSegment()
+	if ongoing.Segment.Id != 2 {
+		t.Fatalf("expected ongoing segment id to be 2, got %d", ongoing.Segment.Id)
 	}
 
 	err = sm.MergeSegments(0, 1)

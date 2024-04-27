@@ -10,53 +10,46 @@ import (
 
 type SegmentManager struct {
 	dbDir            string
-	segmentJournal   *SegmentJournal
 	operationJournal *SegmentOperationJournal
 
 	segments   map[SegmentId]Segment
 	operations map[OperationId]SegmentOperation
 
-	ongoing OngoingSegment
+	ongoing LiveSegment
 }
 
 func OpenDatabase(dbDir string) (*SegmentManager, error) {
-	segmentJournal, currentSegments, err := OpenSegmentJournal(dbDir)
+	operationJournal, currentSegments, err := OpenSegmentOperationJournal(dbDir)
 	if err != nil {
 		return nil, err
 	}
 
+	bootstrapped := true
 	if currentSegments == nil {
-		ongoing := OngoingSegment{
-			Id:              0,
-			JournalFilename: getWalFilename(0),
-		}
+		bootstrapped = false
 		currentSegments = &CurrentSegments{
-			Ongoing:  ongoing,
-			Segments: make(map[SegmentId]Segment),
+			Segments:   make(map[SegmentId]Segment),
+			Operations: make(map[OperationId]SegmentOperation),
 		}
+	}
 
-		err = segmentJournal.StartSegment(ongoing.Id, ongoing.JournalFilename)
+	sm := &SegmentManager{
+		dbDir:            dbDir,
+		operationJournal: operationJournal,
+		segments:         currentSegments.Segments,
+		operations:       currentSegments.Operations,
+		ongoing:          currentSegments.Ongoing,
+	}
+
+	if !bootstrapped {
+		err = sm.Initialize()
 		if err != nil {
+			log.Printf("failed to initialize segment manager: %v", err)
 			return nil, err
 		}
 	}
 
-	operationJournal, operations, err := OpenSegmentOperationJournal(dbDir)
-	if err != nil {
-		return nil, err
-	}
-	if operations == nil {
-		operations = make(map[OperationId]SegmentOperation)
-	}
-
-	return &SegmentManager{
-		dbDir:            dbDir,
-		segmentJournal:   segmentJournal,
-		operationJournal: operationJournal,
-		segments:         currentSegments.Segments,
-		operations:       operations,
-		ongoing:          currentSegments.Ongoing,
-	}, nil
+	return sm, nil
 }
 
 func (sm *SegmentManager) getNextOperationId() OperationId {
@@ -79,23 +72,19 @@ func getSegmentFilename(id SegmentId) storage.Filename {
 	return storage.Filename(fmt.Sprintf("segment-%d", id))
 }
 
-func (sm *SegmentManager) GetOnGoingSegment() OngoingSegment {
+func (sm *SegmentManager) GetOnGoingSegment() LiveSegment {
 	return sm.ongoing
 }
 
-func (sm *SegmentManager) SealCurrentSegment(mt memtable.Memtable) error {
-	ongoingSegment := sm.ongoing
-
-	segment := Segment{
-		Id:       ongoingSegment.Id,
-		Filename: getSegmentFilename(ongoingSegment.Id),
+func (sm *SegmentManager) Initialize() error {
+	firstSegment := &LiveSegment{
+		WalFilename: getWalFilename(0),
+		Segment: Segment{
+			Id:       0,
+			Filename: getSegmentFilename(0),
+		},
 	}
-	op := NewAddSegmentOperation(
-		sm.getNextOperationId(),
-		sm.dbDir,
-		segment,
-		mt,
-	)
+	op := NewAddSegmentOperation(sm.getNextOperationId(), sm.dbDir, nil, firstSegment)
 	startEntry := op.StartJournalEntry()
 	err := sm.operationJournal.Write(startEntry)
 	if err != nil {
@@ -109,24 +98,47 @@ func (sm *SegmentManager) SealCurrentSegment(mt memtable.Memtable) error {
 		log.Printf("failed to execute operation: %v", err)
 		return err
 	}
+	sm.ongoing = *firstSegment
 
-	err = sm.segmentJournal.AddSegment(op.segment)
+	completedEntry := op.CompletedJournalEntry()
+	err = sm.operationJournal.Write(completedEntry)
 	if err != nil {
+		log.Printf("failed to write journal entry: %v", err)
 		return err
 	}
-	sm.segments[segment.Id] = op.segment
+	delete(sm.operations, op.Id())
 
+	return nil
+}
+
+func (sm *SegmentManager) SealCurrentSegment(mt memtable.Memtable) error {
+	ongoingSegment := sm.ongoing
 	nextSegmentId := sm.getNextSegmentId()
-	newOngoing := OngoingSegment{
-		Id:              nextSegmentId,
-		JournalFilename: getWalFilename(nextSegmentId),
+	nextSegment := &LiveSegment{
+		WalFilename: getWalFilename(nextSegmentId),
+		Segment: Segment{
+			Id:       nextSegmentId,
+			Filename: getSegmentFilename(nextSegmentId),
+		},
 	}
+	ongoingSegment.memtable = mt
 
-	err = sm.segmentJournal.StartSegment(newOngoing.Id, newOngoing.JournalFilename)
+	op := NewAddSegmentOperation(sm.getNextOperationId(), sm.dbDir, &ongoingSegment, nextSegment)
+	startEntry := op.StartJournalEntry()
+	err := sm.operationJournal.Write(startEntry)
 	if err != nil {
+		log.Printf("failed to write journal entry: %v", err)
 		return err
 	}
-	sm.ongoing = newOngoing
+	sm.operations[op.Id()] = op
+
+	err = op.Execute()
+	if err != nil {
+		log.Printf("failed to execute operation: %v", err)
+		return err
+	}
+	sm.segments[ongoingSegment.Segment.Id] = ongoingSegment.Segment
+	sm.ongoing = *nextSegment
 
 	completedEntry := op.CompletedJournalEntry()
 	err = sm.operationJournal.Write(completedEntry)
@@ -140,16 +152,11 @@ func (sm *SegmentManager) SealCurrentSegment(mt memtable.Memtable) error {
 }
 
 func (sm *SegmentManager) Close() error {
-	err := sm.segmentJournal.Close()
-	if err != nil {
-		return err
-	}
-
 	return sm.operationJournal.Close()
 }
 
 func (sm *SegmentManager) getNextSegmentId() SegmentId {
-	return sm.ongoing.Id + 1
+	return sm.ongoing.Segment.Id + 1
 }
 
 func getMergedSegmentFilename(a, b SegmentId) storage.Filename {
@@ -177,16 +184,6 @@ func (sm *SegmentManager) MergeSegments(a, b SegmentId) error {
 	err = op.Execute()
 	if err != nil {
 		log.Printf("failed to execute operation: %v", err)
-		return err
-	}
-
-	// these should be done in a transaction
-	err = sm.segmentJournal.AddSegment(mergedSegment)
-	if err != nil {
-		return err
-	}
-	err = sm.segmentJournal.RemoveSegment(b)
-	if err != nil {
 		return err
 	}
 

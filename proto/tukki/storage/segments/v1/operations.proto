@@ -4,11 +4,19 @@ package tukki.storage.segments.v1;
 
 option go_package = "github.com/jukeks/tukki/db/segments";
 
-import "tukki/storage/segments/v1/segments.proto";
+message Segment {
+    uint64 id = 1;
+    string filename = 2;
+}
 
+message LiveSegment {
+    Segment segment = 1;
+    string wal_filename = 2;
+}
 
 message AddSegment {
-    Segment segment = 1;
+    optional LiveSegment completing_segment = 1;
+    LiveSegment new_segment = 2;
 }
 
 message MergeSegments {

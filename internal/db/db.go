@@ -22,7 +22,7 @@ func OpenDatabase(dbDir string) *Database {
 	ongoing := segmentsManager.GetOnGoingSegment()
 
 	mt := memtable.NewMemtable()
-	wal, err := memtable.OpenWal(dbDir, ongoing.JournalFilename, mt)
+	wal, err := memtable.OpenWal(dbDir, ongoing.WalFilename, mt)
 	if err != nil {
 		log.Fatalf("failed to create journal: %v", err)
 	}

@@ -2,6 +2,7 @@ package memtable
 
 import (
 	"io"
+	"log"
 
 	"github.com/jukeks/tukki/internal/journal"
 	"github.com/jukeks/tukki/internal/storage"
@@ -15,6 +16,9 @@ type MembtableJournal struct {
 func OpenWal(dbDir string, journalName storage.Filename, mt Memtable) (*MembtableJournal, error) {
 	handle := func(r *journal.JournalReader) error {
 		return readJournal(r, mt)
+	}
+	if journalName == "" {
+		log.Fatalf("journal name is empty")
 	}
 	j, err := journal.OpenJournal(dbDir, journalName, handle)
 	if err != nil {
