@@ -17,8 +17,9 @@ type AddSegmentOperation struct {
 	memtable memtable.Memtable
 }
 
-func NewAddSegmentOperation(dbDir string, segment Segment, memtable memtable.Memtable) *AddSegmentOperation {
+func NewAddSegmentOperation(id OperationId, dbDir string, segment Segment, memtable memtable.Memtable) *AddSegmentOperation {
 	return &AddSegmentOperation{
+		id:       id,
 		dbDir:    dbDir,
 		segment:  segment,
 		memtable: memtable,

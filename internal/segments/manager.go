@@ -56,6 +56,18 @@ func OpenDatabase(dbDir string) (*SegmentManager, error) {
 	}, nil
 }
 
+func (sm *SegmentManager) getNextOperationId() OperationId {
+	// get highest operation id in ongoing operations
+	var maxId OperationId
+	for id := range sm.operations {
+		if id > maxId {
+			maxId = id
+		}
+	}
+
+	return maxId + 1
+}
+
 func getWalFilename(id SegmentId) storage.Filename {
 	return storage.Filename(fmt.Sprintf("wal-%d.journal", id))
 }
@@ -69,18 +81,25 @@ func (sm *SegmentManager) GetOnGoingSegment() OngoingSegment {
 }
 
 func (sm *SegmentManager) SealCurrentSegment(mt memtable.Memtable) error {
-	segment := sm.ongoing
+	ongoingSegment := sm.ongoing
 
-	op := NewAddSegmentOperation(sm.dbDir, Segment{
-		Id:       segment.Id,
-		Filename: getSegmentFilename(segment.Id),
-	}, mt)
+	segment := Segment{
+		Id:       ongoingSegment.Id,
+		Filename: getSegmentFilename(ongoingSegment.Id),
+	}
+	op := NewAddSegmentOperation(
+		sm.getNextOperationId(),
+		sm.dbDir,
+		segment,
+		mt,
+	)
 	startEntry := op.StartJournalEntry()
 	err := sm.operationJournal.Write(startEntry)
 	if err != nil {
 		log.Printf("failed to write journal entry: %v", err)
 		return err
 	}
+	sm.operations[op.Id()] = op
 
 	err = op.Execute()
 	if err != nil {
@@ -112,6 +131,7 @@ func (sm *SegmentManager) SealCurrentSegment(mt memtable.Memtable) error {
 		log.Printf("failed to write journal entry: %v", err)
 		return err
 	}
+	delete(sm.operations, op.Id())
 
 	return nil
 }
@@ -142,13 +162,14 @@ func (sm *SegmentManager) MergeSegments(a, b SegmentId) error {
 		Filename: getMergedSegmentFilename(segmentA.Id, segmentB.Id),
 	}
 
-	op := NewMergeSegmentsOperation(sm.dbDir, []Segment{segmentA, segmentB}, mergedSegment)
+	op := NewMergeSegmentsOperation(sm.getNextOperationId(), sm.dbDir, []Segment{segmentA, segmentB}, mergedSegment)
 	startEntry := op.StartJournalEntry()
 	err := sm.operationJournal.Write(startEntry)
 	if err != nil {
 		log.Printf("failed to write journal entry: %v", err)
 		return err
 	}
+	sm.operations[op.Id()] = op
 
 	err = op.Execute()
 	if err != nil {
@@ -176,6 +197,7 @@ func (sm *SegmentManager) MergeSegments(a, b SegmentId) error {
 		log.Printf("failed to write journal entry: %v", err)
 		return err
 	}
+	delete(sm.operations, op.Id())
 
 	return nil
 }

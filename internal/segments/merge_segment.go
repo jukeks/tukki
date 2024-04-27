@@ -16,8 +16,9 @@ type MergeSegmentsOperation struct {
 	mergedSegment   Segment
 }
 
-func NewMergeSegmentsOperation(dbDir string, segmentsToMerge []Segment, mergedSegment Segment) *MergeSegmentsOperation {
+func NewMergeSegmentsOperation(id OperationId, dbDir string, segmentsToMerge []Segment, mergedSegment Segment) *MergeSegmentsOperation {
 	return &MergeSegmentsOperation{
+		id:              id,
 		dbDir:           dbDir,
 		segmentsToMerge: segmentsToMerge,
 		mergedSegment:   mergedSegment,
