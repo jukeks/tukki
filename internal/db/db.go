@@ -53,8 +53,11 @@ func (d *Database) Get(key string) (string, error) {
 		return value.Value, nil
 	}
 
-	// TODO check segments
-	return "", ErrKeyNotFound
+	val, err := d.segmentManager.Get(key)
+	if err != nil {
+		return "", err
+	}
+	return val, nil
 }
 
 func (d *Database) Delete(key string) error {
