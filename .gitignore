@@ -22,3 +22,5 @@ go.work
 
 # coverage
 coverage.html
+
+/bin

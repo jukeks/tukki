@@ -11,7 +11,8 @@ test:
 	go test ./...
 
 build:
-	go build -v ./...
+	go build -v -o ./bin/server ./cmd/server
+	go build -v -o ./bin/client ./cmd/client
 
 format:
 	go fmt ./...
