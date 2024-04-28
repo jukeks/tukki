@@ -16,6 +16,8 @@ type Database struct {
 	operations map[segments.OperationId]segments.SegmentOperation
 
 	ongoing *LiveSegment
+
+	walSizeLimit uint64
 }
 
 func OpenDatabase(dbDir string) (*Database, error) {
@@ -47,6 +49,7 @@ func OpenDatabase(dbDir string) (*Database, error) {
 		segments:         currentSegments.Segments,
 		operations:       currentSegments.Operations,
 		ongoing:          ongoing,
+		walSizeLimit:     2 * 1024 * 1024,
 	}
 
 	if !bootstrapped {

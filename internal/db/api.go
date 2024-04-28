@@ -2,6 +2,7 @@ package db
 
 import (
 	"errors"
+	"log"
 	"os"
 	"sort"
 
@@ -64,9 +65,42 @@ func (db *Database) getSegmentsSorted() []segments.SegmentMetadata {
 }
 
 func (db *Database) Set(key, value string) error {
+	if err := db.handleWalSizeLimit(); err != nil {
+		return err
+	}
+
 	return db.ongoing.Set(key, value)
 }
 
 func (db *Database) Delete(key string) error {
+	if err := db.handleWalSizeLimit(); err != nil {
+		return err
+	}
+
 	return db.ongoing.Delete(key)
+}
+
+func (db *Database) getCurrentWalSize() uint64 {
+	return db.ongoing.Wal.Size()
+}
+
+func (db *Database) isOverWalSizeLimit() bool {
+	return db.getCurrentWalSize() > db.walSizeLimit
+}
+
+func (db *Database) handleWalSizeLimit() error {
+	if !db.isOverWalSizeLimit() {
+		return nil
+	}
+
+	log.Printf("wal size limit reached, sealing current segment")
+	err := db.ongoing.Close()
+	if err != nil {
+		return err
+	}
+	_, err = db.SealCurrentSegment()
+	if err != nil {
+		return err
+	}
+	return nil
 }

@@ -220,3 +220,38 @@ func TestMergeSegments(t *testing.T) {
 		t.Fatalf("expected segments map to have 1 element, got %v", sm.segments)
 	}
 }
+
+func TestSegmentRotated(t *testing.T) {
+	dbDir := testutil.EnsureTempDirectory("test-tukki-" + randstr.String(10))
+	db, err := OpenDatabase(dbDir)
+	if err != nil {
+		t.Fatalf("failed to open segment manager: %v", err)
+	}
+
+	written := 0
+	kvMap := make(map[string]string)
+	for i := 0; i < 200; i++ {
+		key := randstr.String(10)
+		value := randstr.String(16 * 1024)
+		err = db.Set(key, value)
+		if err != nil {
+			t.Fatalf("failed to set key-value pair: %v", err)
+		}
+		written += len(key) + len(value)
+		kvMap[key] = value
+	}
+
+	if db.ongoing.Segment.Id != 1 {
+		t.Fatalf("expected ongoing segment id to be 1, got %d", db.ongoing.Segment.Id)
+	}
+
+	for k, v := range kvMap {
+		value, err := db.Get(k)
+		if err != nil {
+			t.Fatalf("failed to get key-value pair: %v", err)
+		}
+		if value != v {
+			t.Fatalf("expected value to be %s, got %s", v, value)
+		}
+	}
+}

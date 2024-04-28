@@ -10,7 +10,7 @@ type LiveSegment struct {
 	WalFilename storage.Filename
 	Segment     segments.SegmentMetadata
 	Memtable    memtable.Memtable
-	Wal         *memtable.MembtableJournal
+	Wal         *memtable.Wal
 }
 
 func NewLiveSegment(id segments.SegmentId) *LiveSegment {

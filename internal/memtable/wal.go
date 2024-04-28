@@ -9,11 +9,11 @@ import (
 	walv1 "github.com/jukeks/tukki/proto/gen/tukki/storage/wal/v1"
 )
 
-type MembtableJournal struct {
+type Wal struct {
 	journal *journal.Journal
 }
 
-func OpenWal(dbDir string, journalName storage.Filename, mt Memtable) (*MembtableJournal, error) {
+func OpenWal(dbDir string, journalName storage.Filename, mt Memtable) (*Wal, error) {
 	handle := func(r *journal.JournalReader) error {
 		return readJournal(r, mt)
 	}
@@ -25,10 +25,10 @@ func OpenWal(dbDir string, journalName storage.Filename, mt Memtable) (*Membtabl
 		return nil, err
 	}
 
-	return &MembtableJournal{j}, nil
+	return &Wal{j}, nil
 }
 
-func (mtj *MembtableJournal) Set(key, value string) error {
+func (mtj *Wal) Set(key, value string) error {
 	return mtj.journal.Writer.Write(&walv1.WalEntry{
 		Key:     key,
 		Value:   value,
@@ -36,14 +36,14 @@ func (mtj *MembtableJournal) Set(key, value string) error {
 	})
 }
 
-func (mtj *MembtableJournal) Delete(key string) error {
+func (mtj *Wal) Delete(key string) error {
 	return mtj.journal.Writer.Write(&walv1.WalEntry{
 		Key:     key,
 		Deleted: true,
 	})
 }
 
-func (mtj *MembtableJournal) Close() error {
+func (mtj *Wal) Close() error {
 	return mtj.journal.File.Close()
 }
 
@@ -64,4 +64,13 @@ func readJournal(journalReader *journal.JournalReader, mt Memtable) error {
 			mt.Insert(journalEntry.Key, journalEntry.Value)
 		}
 	}
+}
+
+func (mtj *Wal) Size() uint64 {
+	stat, err := mtj.journal.File.Stat()
+	if err != nil {
+		log.Fatalf("failed to get journal file size: %v", err)
+	}
+
+	return uint64(stat.Size())
 }
