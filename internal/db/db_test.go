@@ -100,7 +100,7 @@ func TestSegmentManager(t *testing.T) {
 		t.Fatalf("expected operations map to be empty, got %v", sm.operations)
 	}
 
-	writeToWalAndMemtable(t, ongoing, "key1", "value1")
+	writeLiveSegment(t, ongoing, "key1", "value1")
 	nextSegment, err := sm.SealCurrentSegment()
 	if err != nil {
 		t.Fatalf("failed to seal current segment: %v", err)
@@ -142,7 +142,7 @@ func TestSegmentManager(t *testing.T) {
 	}
 }
 
-func writeToWalAndMemtable(t *testing.T, liveSegment *LiveSegment, key, value string) {
+func writeLiveSegment(t *testing.T, liveSegment *LiveSegment, key, value string) {
 	err := liveSegment.Set(key, value)
 	if err != nil {
 		t.Fatalf("failed to set key-value pair: %v", err)
@@ -157,8 +157,8 @@ func TestMergeSegments(t *testing.T) {
 	}
 
 	ongoing := sm.GetOnGoingSegment()
-	writeToWalAndMemtable(t, ongoing, "key1", "value1")
-	writeToWalAndMemtable(t, ongoing, "key2", "value2")
+	writeLiveSegment(t, ongoing, "key1", "value1")
+	writeLiveSegment(t, ongoing, "key2", "value2")
 	if err := ongoing.Close(); err != nil {
 		t.Fatalf("failed to close ongoing segment: %v", err)
 	}
@@ -173,8 +173,8 @@ func TestMergeSegments(t *testing.T) {
 		t.Fatalf("expected ongoing segment id to be 1, got %d", ongoing.Segment.Id)
 	}
 
-	writeToWalAndMemtable(t, ongoing, "key1", "value1")
-	writeToWalAndMemtable(t, ongoing, "key2", "value2")
+	writeLiveSegment(t, ongoing, "key1", "value1")
+	writeLiveSegment(t, ongoing, "key2", "value2")
 	if err := ongoing.Close(); err != nil {
 		t.Fatalf("failed to close ongoing segment: %v", err)
 	}
