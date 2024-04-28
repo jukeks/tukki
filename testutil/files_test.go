@@ -18,8 +18,11 @@ func TestEnsureTempDirectory(t *testing.T) {
 	}
 
 	// ensure dir is in tmp (whatever the OS temp dir is)
-	if filepath.Dir(dir) != filepath.Dir(os.TempDir()) {
-		t.Fatalf("expected dir to be in %s, got %s", filepath.Dir(os.TempDir()), filepath.Dir(dir))
+
+	if filepath.Dir(dir) != os.TempDir() {
+		t.Errorf("TempDir: %s, dir of tempdir: %s", os.TempDir(), filepath.Dir(os.TempDir()))
+		t.Errorf("dir %s, dir of dir: %s", dir, filepath.Dir(dir))
+		t.Fatalf("expected dir to be in %s, got %s", os.TempDir(), filepath.Dir(dir))
 	}
 
 	// ensure dir exists
