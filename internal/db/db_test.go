@@ -3,12 +3,14 @@ package db
 import (
 	"testing"
 
-	testutil "github.com/jukeks/tukki/tests/util"
+	testutil "github.com/jukeks/tukki/testutil"
 	"github.com/thanhpk/randstr"
 )
 
 func TestDB(t *testing.T) {
-	dbDir := testutil.EnsureTempDirectory("test-tukki-" + randstr.String(10))
+	dbDir, cleanup := testutil.EnsureTempDirectory()
+	defer cleanup()
+
 	database, err := OpenDatabase(dbDir)
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
@@ -47,7 +49,9 @@ func TestDB(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	dbDir := testutil.EnsureTempDirectory("test-tukki-" + randstr.String(10))
+	dbDir, cleanup := testutil.EnsureTempDirectory()
+	defer cleanup()
+
 	database, err := OpenDatabase(dbDir)
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
@@ -77,7 +81,9 @@ func TestDelete(t *testing.T) {
 }
 
 func TestSegmentManager(t *testing.T) {
-	dbDir := testutil.EnsureTempDirectory("test-tukki-" + randstr.String(10))
+	dbDir, cleanup := testutil.EnsureTempDirectory()
+	defer cleanup()
+
 	sm, err := OpenDatabase(dbDir)
 	if err != nil {
 		t.Fatalf("failed to open segment manager: %v", err)
@@ -150,7 +156,9 @@ func writeLiveSegment(t *testing.T, liveSegment *LiveSegment, key, value string)
 }
 
 func TestMergeSegments(t *testing.T) {
-	dbDir := testutil.EnsureTempDirectory("test-tukki-" + randstr.String(10))
+	dbDir, cleanup := testutil.EnsureTempDirectory()
+	defer cleanup()
+
 	sm, err := OpenDatabase(dbDir)
 	if err != nil {
 		t.Fatalf("failed to open segment manager: %v", err)
@@ -222,7 +230,9 @@ func TestMergeSegments(t *testing.T) {
 }
 
 func TestSegmentRotated(t *testing.T) {
-	dbDir := testutil.EnsureTempDirectory("test-tukki-" + randstr.String(10))
+	dbDir, cleanup := testutil.EnsureTempDirectory()
+	defer cleanup()
+
 	db, err := OpenDatabase(dbDir)
 	if err != nil {
 		t.Fatalf("failed to open segment manager: %v", err)
@@ -253,5 +263,27 @@ func TestSegmentRotated(t *testing.T) {
 		if value != v {
 			t.Fatalf("expected value to be %s, got %s", v, value)
 		}
+	}
+}
+
+func BenchmarkWrite(b *testing.B) {
+	dbDir, cleanup := testutil.EnsureTempDirectory()
+	database, err := OpenDatabase(dbDir)
+	if err != nil {
+		b.Fatalf("failed to open database: %v", err)
+	}
+	b.Cleanup(func() {
+		database.Close()
+		cleanup()
+	})
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		key := randstr.String(10)
+		value := randstr.String(16 * 1024)
+		b.StartTimer()
+		database.Set(key, value)
 	}
 }

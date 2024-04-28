@@ -8,7 +8,7 @@ import (
 	"github.com/thanhpk/randstr"
 
 	"github.com/jukeks/tukki/internal/storage"
-	testutil "github.com/jukeks/tukki/tests/util"
+	testutil "github.com/jukeks/tukki/testutil"
 
 	walv1 "github.com/jukeks/tukki/proto/gen/tukki/storage/wal/v1"
 )
@@ -55,7 +55,9 @@ func TestJournalWriter(t *testing.T) {
 }
 
 func TestOpenJournal(t *testing.T) {
-	dbDir := testutil.EnsureTempDirectory("test-tukki-" + randstr.String(10))
+	dbDir, cleanup := testutil.EnsureTempDirectory()
+	defer cleanup()
+
 	filename := storage.Filename(randstr.String(10))
 
 	j, err := OpenJournal(dbDir, filename, func(r *JournalReader) error {

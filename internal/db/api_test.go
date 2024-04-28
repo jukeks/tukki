@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/jukeks/tukki/internal/segments"
-	testutil "github.com/jukeks/tukki/tests/util"
+	testutil "github.com/jukeks/tukki/testutil"
 	"github.com/thanhpk/randstr"
 )
 
@@ -43,7 +43,9 @@ func TestSegmentManagerGetSegmentsSorted(t *testing.T) {
 }
 
 func TestGetFromSegments(t *testing.T) {
-	dbDir := testutil.EnsureTempDirectory("test-tukki-segments-" + randstr.String(10))
+	dbDir, cleanup := testutil.EnsureTempDirectory()
+	defer cleanup()
+
 	db, err := OpenDatabase(dbDir)
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)

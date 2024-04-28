@@ -6,7 +6,7 @@ import (
 
 	"github.com/jukeks/tukki/internal/memtable"
 	"github.com/jukeks/tukki/internal/sstable"
-	testutil "github.com/jukeks/tukki/tests/util"
+	testutil "github.com/jukeks/tukki/testutil"
 	"github.com/thanhpk/randstr"
 )
 

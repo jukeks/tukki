@@ -6,11 +6,11 @@ import (
 
 	"github.com/jukeks/tukki/internal/memtable"
 	"github.com/jukeks/tukki/internal/sstable"
-	testutil "github.com/jukeks/tukki/tests/util"
+	testutil "github.com/jukeks/tukki/testutil"
 	"github.com/thanhpk/randstr"
 )
 
-func createSSTable(length int) string {
+func createSSTable(dbDir string, length int) string {
 	mt := memtable.NewMemtable()
 	keys := make([]string, length)
 	values := make([]string, length)
@@ -20,7 +20,7 @@ func createSSTable(length int) string {
 		mt.Insert(keys[i], values[i])
 	}
 
-	f := testutil.CreateTempFile("test-tukki", "sstable-test-*")
+	f := testutil.CreateTempFile(dbDir, "sstable-test-*")
 	tmpfile := f.Name()
 
 	sstw := sstable.NewSSTableWriter(f)
@@ -91,10 +91,12 @@ func checkMemtableAreEqual(mt1, mt2 memtable.Memtable, expectedLen int) bool {
 }
 
 func testMerge(t *testing.T, table1Len, table2Len int) {
-	testutil.EnsureTempDirectory("test-tukki")
-	filename1 := createSSTable(table1Len)
+	dbDir, cleanup := testutil.EnsureTempDirectory()
+	defer cleanup()
+
+	filename1 := createSSTable(dbDir, table1Len)
 	defer os.Remove(filename1)
-	filename2 := createSSTable(table2Len)
+	filename2 := createSSTable(dbDir, table2Len)
 	defer os.Remove(filename2)
 
 	mt := readToMemtable(filename1, filename2)
@@ -105,7 +107,7 @@ func testMerge(t *testing.T, table1Len, table2Len int) {
 	f2, _ := os.Open(filename2)
 	defer f2.Close()
 
-	f := testutil.CreateTempFile("test-tukki", "sstable-test-*")
+	f := testutil.CreateTempFile(dbDir, "sstable-test-*")
 	outfile := f.Name()
 	defer f.Close()
 	defer os.Remove(outfile)
