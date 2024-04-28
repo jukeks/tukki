@@ -11,7 +11,7 @@ import (
 )
 
 type OpenSegment struct {
-	Segment     Segment
+	Segment     SegmentMetadata
 	WalFilename storage.Filename
 	Memtable    memtable.Memtable
 }

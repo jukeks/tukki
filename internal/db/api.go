@@ -47,7 +47,7 @@ func (db *Database) getFromSegments(key string) (string, error) {
 	return "", ErrKeyNotFound
 }
 
-func (db *Database) getSegmentsSorted() []segments.Segment {
+func (db *Database) getSegmentsSorted() []segments.SegmentMetadata {
 	keys := make([]segments.SegmentId, len(db.segments))
 	i := 0
 	for k := range db.segments {
@@ -58,7 +58,7 @@ func (db *Database) getSegmentsSorted() []segments.Segment {
 		return keys[i] > keys[j]
 	})
 
-	segments := make([]segments.Segment, len(keys))
+	segments := make([]segments.SegmentMetadata, len(keys))
 	for i, k := range keys {
 		segments[i] = db.segments[k]
 	}

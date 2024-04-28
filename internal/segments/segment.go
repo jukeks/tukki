@@ -4,7 +4,7 @@ import "github.com/jukeks/tukki/internal/storage"
 
 type SegmentId uint64
 
-type Segment struct {
+type SegmentMetadata struct {
 	Id       SegmentId
 	Filename storage.Filename
 }

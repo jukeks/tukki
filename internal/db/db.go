@@ -12,7 +12,7 @@ type Database struct {
 	dbDir            string
 	operationJournal *segments.SegmentOperationJournal
 
-	segments   map[segments.SegmentId]segments.Segment
+	segments   map[segments.SegmentId]segments.SegmentMetadata
 	operations map[segments.OperationId]segments.SegmentOperation
 
 	ongoing *LiveSegment
@@ -28,7 +28,7 @@ func OpenDatabase(dbDir string) (*Database, error) {
 	if currentSegments == nil {
 		bootstrapped = false
 		currentSegments = &segments.CurrentSegments{
-			Segments:   make(map[segments.SegmentId]segments.Segment),
+			Segments:   make(map[segments.SegmentId]segments.SegmentMetadata),
 			Operations: make(map[segments.OperationId]segments.SegmentOperation),
 		}
 	}
@@ -191,12 +191,12 @@ func (db *Database) MergeSegments(a, b segments.SegmentId) error {
 	segmentA := db.segments[a]
 	segmentB := db.segments[b]
 
-	mergedSegment := segments.Segment{
+	mergedSegment := segments.SegmentMetadata{
 		Id:       segmentB.Id,
 		Filename: getMergedSegmentFilename(segmentA.Id, segmentB.Id),
 	}
 
-	op := segments.NewMergeSegmentsOperation(db.getNextOperationId(), db.dbDir, []segments.Segment{segmentA, segmentB}, mergedSegment)
+	op := segments.NewMergeSegmentsOperation(db.getNextOperationId(), db.dbDir, []segments.SegmentMetadata{segmentA, segmentB}, mergedSegment)
 	startEntry := op.StartJournalEntry()
 	err := db.operationJournal.Write(startEntry)
 	if err != nil {

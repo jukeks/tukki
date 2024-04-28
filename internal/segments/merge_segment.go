@@ -12,11 +12,11 @@ import (
 type MergeSegmentsOperation struct {
 	id              OperationId
 	dbDir           string
-	segmentsToMerge []Segment
-	mergedSegment   Segment
+	segmentsToMerge []SegmentMetadata
+	mergedSegment   SegmentMetadata
 }
 
-func NewMergeSegmentsOperation(id OperationId, dbDir string, segmentsToMerge []Segment, mergedSegment Segment) *MergeSegmentsOperation {
+func NewMergeSegmentsOperation(id OperationId, dbDir string, segmentsToMerge []SegmentMetadata, mergedSegment SegmentMetadata) *MergeSegmentsOperation {
 	return &MergeSegmentsOperation{
 		id:              id,
 		dbDir:           dbDir,

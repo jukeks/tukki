@@ -8,14 +8,14 @@ import (
 
 type LiveSegment struct {
 	WalFilename storage.Filename
-	Segment     segments.Segment
+	Segment     segments.SegmentMetadata
 	Memtable    memtable.Memtable
 	Wal         *memtable.MembtableJournal
 }
 
 func NewLiveSegment(id segments.SegmentId) *LiveSegment {
 	return &LiveSegment{
-		Segment: segments.Segment{
+		Segment: segments.SegmentMetadata{
 			Id:       id,
 			Filename: getSegmentFilename(id),
 		},

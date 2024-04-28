@@ -10,7 +10,7 @@ import (
 
 func TestSegmentManagerGetSegmentsSorted(t *testing.T) {
 	db := Database{
-		segments: map[segments.SegmentId]segments.Segment{
+		segments: map[segments.SegmentId]segments.SegmentMetadata{
 			1: {
 				Id:       1,
 				Filename: "segment1",
