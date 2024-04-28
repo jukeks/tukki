@@ -3,7 +3,6 @@ package segments
 import (
 	"testing"
 
-	"github.com/jukeks/tukki/internal/memtable"
 	testutil "github.com/jukeks/tukki/tests/util"
 	"github.com/thanhpk/randstr"
 )
@@ -50,22 +49,17 @@ func TestSegmentManagerGet(t *testing.T) {
 	}
 
 	ongoing := sm.GetOnGoingSegment()
-	mt := memtable.NewMemtable()
-	wal, err := memtable.OpenWal(dbDir, ongoing.WalFilename, mt)
-	if err != nil {
-		t.Fatalf("failed to create journal: %v", err)
-	}
 
 	key := randstr.String(10)
 	value := randstr.String(10)
-	writeToWalAndMemtable(t, wal, mt, key, value)
+	writeToWalAndMemtable(t, ongoing, key, value)
 
 	_, err = sm.Get(key)
 	if err != ErrKeyNotFound {
 		t.Fatalf("expected key not found error, got %v", err)
 	}
 
-	err = sm.SealCurrentSegment(mt)
+	_, err = sm.SealCurrentSegment()
 	if err != nil {
 		t.Fatalf("failed to seal segment: %v", err)
 	}

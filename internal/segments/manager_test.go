@@ -3,7 +3,6 @@ package segments
 import (
 	"testing"
 
-	"github.com/jukeks/tukki/internal/memtable"
 	testutil "github.com/jukeks/tukki/tests/util"
 	"github.com/thanhpk/randstr"
 )
@@ -32,14 +31,8 @@ func TestSegmentManager(t *testing.T) {
 		t.Fatalf("expected operations map to be empty, got %v", sm.operations)
 	}
 
-	mt := memtable.NewMemtable()
-	wal, err := memtable.OpenWal(dbDir, ongoing.WalFilename, mt)
-	if err != nil {
-		t.Fatalf("failed to open wal: %v", err)
-	}
-	writeToWalAndMemtable(t, wal, mt, "key1", "value1")
-
-	err = sm.SealCurrentSegment(mt)
+	writeToWalAndMemtable(t, ongoing, "key1", "value1")
+	nextSegment, err := sm.SealCurrentSegment()
 	if err != nil {
 		t.Fatalf("failed to seal current segment: %v", err)
 	}
@@ -48,7 +41,7 @@ func TestSegmentManager(t *testing.T) {
 		t.Fatalf("expected segments map to have 1 element, got %v", sm.segments)
 	}
 
-	ongoing = sm.GetOnGoingSegment()
+	ongoing = nextSegment
 	if ongoing.Segment.Id != 1 {
 		t.Fatalf("expected ongoing segment id to be 1, got %d", ongoing.Segment.Id)
 	}
@@ -80,13 +73,11 @@ func TestSegmentManager(t *testing.T) {
 	}
 }
 
-func writeToWalAndMemtable(t *testing.T, wal *memtable.MembtableJournal, mt memtable.Memtable, key, value string) {
-	err := wal.Set(key, value)
+func writeToWalAndMemtable(t *testing.T, liveSegment *LiveSegment, key, value string) {
+	err := liveSegment.Set(key, value)
 	if err != nil {
-		t.Fatalf("failed to write to wal: %v", err)
+		t.Fatalf("failed to set key-value pair: %v", err)
 	}
-
-	mt.Insert(key, value)
 }
 
 func TestMergeSegments(t *testing.T) {
@@ -97,35 +88,29 @@ func TestMergeSegments(t *testing.T) {
 	}
 
 	ongoing := sm.GetOnGoingSegment()
-	mt := memtable.NewMemtable()
-	wal, err := memtable.OpenWal(dbDir, ongoing.WalFilename, mt)
-	if err != nil {
-		t.Fatalf("failed to open wal: %v", err)
+	writeToWalAndMemtable(t, ongoing, "key1", "value1")
+	writeToWalAndMemtable(t, ongoing, "key2", "value2")
+	if err := ongoing.Close(); err != nil {
+		t.Fatalf("failed to close ongoing segment: %v", err)
 	}
-	writeToWalAndMemtable(t, wal, mt, "key1", "value1")
-	writeToWalAndMemtable(t, wal, mt, "key2", "value2")
-	wal.Close()
 
-	err = sm.SealCurrentSegment(mt)
+	nextSegment, err := sm.SealCurrentSegment()
 	if err != nil {
 		t.Fatalf("failed to seal current segment: %v", err)
 	}
 
-	ongoing = sm.GetOnGoingSegment()
+	ongoing = nextSegment
 	if ongoing.Segment.Id != 1 {
 		t.Fatalf("expected ongoing segment id to be 1, got %d", ongoing.Segment.Id)
 	}
 
-	mt = memtable.NewMemtable()
-	wal, err = memtable.OpenWal(dbDir, ongoing.WalFilename, mt)
-	if err != nil {
-		t.Fatalf("failed to open wal: %v", err)
+	writeToWalAndMemtable(t, ongoing, "key1", "value1")
+	writeToWalAndMemtable(t, ongoing, "key2", "value2")
+	if err := ongoing.Close(); err != nil {
+		t.Fatalf("failed to close ongoing segment: %v", err)
 	}
-	writeToWalAndMemtable(t, wal, mt, "key1", "value1")
-	writeToWalAndMemtable(t, wal, mt, "key2", "value2")
-	wal.Close()
 
-	err = sm.SealCurrentSegment(mt)
+	nextSegment, err = sm.SealCurrentSegment()
 	if err != nil {
 		t.Fatalf("failed to seal current segment: %v", err)
 	}
@@ -134,7 +119,7 @@ func TestMergeSegments(t *testing.T) {
 		t.Fatalf("expected segments map to have 2 element, got %v", sm.segments)
 	}
 
-	ongoing = sm.GetOnGoingSegment()
+	ongoing = nextSegment
 	if ongoing.Segment.Id != 2 {
 		t.Fatalf("expected ongoing segment id to be 2, got %d", ongoing.Segment.Id)
 	}

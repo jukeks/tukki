@@ -3,13 +3,11 @@ package db
 import (
 	"log"
 
-	"github.com/jukeks/tukki/internal/memtable"
 	"github.com/jukeks/tukki/internal/segments"
 )
 
 type Database struct {
-	memtable       memtable.Memtable
-	wal            *memtable.MembtableJournal
+	ongoing        *segments.LiveSegment
 	segmentManager *segments.SegmentManager
 }
 
@@ -20,58 +18,45 @@ func OpenDatabase(dbDir string) *Database {
 	}
 
 	ongoing := segmentsManager.GetOnGoingSegment()
-
-	mt := memtable.NewMemtable()
-	wal, err := memtable.OpenWal(dbDir, ongoing.WalFilename, mt)
-	if err != nil {
-		log.Fatalf("failed to create journal: %v", err)
-	}
-
 	return &Database{
-		memtable:       mt,
-		wal:            wal,
+		ongoing:        ongoing,
 		segmentManager: segmentsManager,
 	}
 }
 
 func (d *Database) Set(key, value string) error {
-	err := d.wal.Set(key, value)
-	if err != nil {
-		return err
-	}
-
-	d.memtable.Insert(key, value)
-	return nil
+	return d.ongoing.Set(key, value)
 }
 
 func (d *Database) Get(key string) (string, error) {
-	value, found := d.memtable.Get(key)
-	if found {
-		if value.Deleted {
-			return "", ErrKeyNotFound
-		}
-		return value.Value, nil
+	value, err := d.ongoing.Get(key)
+	if err == nil {
+		return value, nil
 	}
 
-	val, err := d.segmentManager.Get(key)
-	if err != nil {
-		return "", err
+	if err != segments.ErrKeyNotFound {
+		val, err := d.segmentManager.Get(key)
+		if err != nil {
+			return "", err
+		}
+		return val, nil
 	}
-	return val, nil
+
+	return "", err
 }
 
 func (d *Database) Delete(key string) error {
-	err := d.wal.Delete(key)
+	err := d.ongoing.Delete(key)
 	if err != nil {
 		return err
 	}
 
-	d.memtable.Delete(key)
+	d.ongoing.Delete(key)
 	return nil
 }
 
 func (d *Database) Close() error {
-	err := d.wal.Close()
+	err := d.ongoing.Close()
 	if err != nil {
 		return err
 	}

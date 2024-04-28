@@ -4,7 +4,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/jukeks/tukki/internal/memtable"
 	"github.com/jukeks/tukki/internal/sstable"
 	"github.com/jukeks/tukki/internal/storage"
 	segmentsv1 "github.com/jukeks/tukki/proto/gen/tukki/storage/segments/v1"
@@ -15,12 +14,6 @@ type AddSegmentOperation struct {
 	dbDir             string
 	completingSegment *LiveSegment
 	newSegment        *LiveSegment
-}
-
-type LiveSegment struct {
-	WalFilename storage.Filename
-	Segment     Segment
-	memtable    memtable.Memtable
 }
 
 func NewAddSegmentOperation(
@@ -96,7 +89,7 @@ func (o *AddSegmentOperation) Execute() error {
 		}
 
 		w := sstable.NewSSTableWriter(f)
-		err = w.WriteFromIterator(completingSegment.memtable.Iterate())
+		err = w.WriteFromIterator(completingSegment.Memtable.Iterate())
 		if err != nil {
 			log.Printf("failed to write sstable from memtable: %v", err)
 			return err

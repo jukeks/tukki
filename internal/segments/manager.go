@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/jukeks/tukki/internal/memtable"
 	"github.com/jukeks/tukki/internal/storage"
 )
 
@@ -15,7 +14,7 @@ type SegmentManager struct {
 	segments   map[SegmentId]Segment
 	operations map[OperationId]SegmentOperation
 
-	ongoing LiveSegment
+	ongoing *LiveSegment
 }
 
 func OpenDatabase(dbDir string) (*SegmentManager, error) {
@@ -49,6 +48,12 @@ func OpenDatabase(dbDir string) (*SegmentManager, error) {
 		}
 	}
 
+	err = sm.ongoing.Open(dbDir)
+	if err != nil {
+		log.Printf("failed to open wal: %v", err)
+		return nil, err
+	}
+
 	return sm, nil
 }
 
@@ -72,18 +77,13 @@ func getSegmentFilename(id SegmentId) storage.Filename {
 	return storage.Filename(fmt.Sprintf("segment-%d", id))
 }
 
-func (sm *SegmentManager) GetOnGoingSegment() LiveSegment {
+func (sm *SegmentManager) GetOnGoingSegment() *LiveSegment {
 	return sm.ongoing
 }
 
 func (sm *SegmentManager) Initialize() error {
-	firstSegment := &LiveSegment{
-		WalFilename: getWalFilename(0),
-		Segment: Segment{
-			Id:       0,
-			Filename: getSegmentFilename(0),
-		},
-	}
+	firstSegment := NewLiveSegment(0)
+
 	op := NewAddSegmentOperation(sm.getNextOperationId(), sm.dbDir, nil, firstSegment)
 	startEntry := op.StartJournalEntry()
 	err := sm.operationJournal.Write(startEntry)
@@ -98,7 +98,7 @@ func (sm *SegmentManager) Initialize() error {
 		log.Printf("failed to execute operation: %v", err)
 		return err
 	}
-	sm.ongoing = *firstSegment
+	sm.ongoing = firstSegment
 
 	completedEntry := op.CompletedJournalEntry()
 	err = sm.operationJournal.Write(completedEntry)
@@ -111,44 +111,42 @@ func (sm *SegmentManager) Initialize() error {
 	return nil
 }
 
-func (sm *SegmentManager) SealCurrentSegment(mt memtable.Memtable) error {
+func (sm *SegmentManager) SealCurrentSegment() (*LiveSegment, error) {
 	ongoingSegment := sm.ongoing
 	nextSegmentId := sm.getNextSegmentId()
-	nextSegment := &LiveSegment{
-		WalFilename: getWalFilename(nextSegmentId),
-		Segment: Segment{
-			Id:       nextSegmentId,
-			Filename: getSegmentFilename(nextSegmentId),
-		},
-	}
-	ongoingSegment.memtable = mt
+	nextSegment := NewLiveSegment(nextSegmentId)
 
-	op := NewAddSegmentOperation(sm.getNextOperationId(), sm.dbDir, &ongoingSegment, nextSegment)
+	op := NewAddSegmentOperation(sm.getNextOperationId(), sm.dbDir, ongoingSegment, nextSegment)
 	startEntry := op.StartJournalEntry()
 	err := sm.operationJournal.Write(startEntry)
 	if err != nil {
 		log.Printf("failed to write journal entry: %v", err)
-		return err
+		return nil, err
 	}
 	sm.operations[op.Id()] = op
 
 	err = op.Execute()
 	if err != nil {
 		log.Printf("failed to execute operation: %v", err)
-		return err
+		return nil, err
 	}
 	sm.segments[ongoingSegment.Segment.Id] = ongoingSegment.Segment
-	sm.ongoing = *nextSegment
+	sm.ongoing = nextSegment
+	err = sm.ongoing.Open(sm.dbDir)
+	if err != nil {
+		log.Printf("failed to open wal: %v", err)
+		return nil, err
+	}
 
 	completedEntry := op.CompletedJournalEntry()
 	err = sm.operationJournal.Write(completedEntry)
 	if err != nil {
 		log.Printf("failed to write journal entry: %v", err)
-		return err
+		return nil, err
 	}
 	delete(sm.operations, op.Id())
 
-	return nil
+	return sm.ongoing, nil
 }
 
 func (sm *SegmentManager) Close() error {

@@ -33,7 +33,7 @@ func OpenSegmentOperationJournal(dbDir string) (
 }
 
 type CurrentSegments struct {
-	Ongoing    LiveSegment
+	Ongoing    *LiveSegment
 	Segments   map[SegmentId]Segment
 	Operations map[OperationId]SegmentOperation
 }
@@ -83,7 +83,7 @@ func readOperationJournal(r *journal.JournalReader) (
 	}
 
 	return &CurrentSegments{
-		Ongoing:    *ongoing,
+		Ongoing:    ongoing,
 		Segments:   segments,
 		Operations: operations,
 	}, nil
