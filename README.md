@@ -5,6 +5,8 @@
 A toy key-value store built to explore log-structured merge-tree (LSM tree) 
 concepts.
 
+<br />
+
 ## Operations
 
 tukki supports only three operations:
