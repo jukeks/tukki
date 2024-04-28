@@ -12,6 +12,7 @@ import (
 
 	kvv1 "github.com/jukeks/tukki/proto/gen/tukki/rpc/kv/v1"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 var (
@@ -20,7 +21,8 @@ var (
 )
 
 func main() {
-	conn, err := grpc.Dial(fmt.Sprintf("localhost:%d", *port), grpc.WithInsecure())
+	conn, err := grpc.Dial(fmt.Sprintf("%s:%d", *hostname, *port),
+		grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("can not connect with server %v", err)
 	}
