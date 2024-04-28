@@ -78,7 +78,7 @@ func repl(client kvv1.KvServiceClient) {
 
 		switch cmd.Cmd {
 		case "set":
-			resp, err := client.Set(context.Background(), &kvv1.SetRequest{
+			_, err := client.Set(context.Background(), &kvv1.SetRequest{
 				Pair: &kvv1.KvPair{
 					Key:   cmd.Key,
 					Value: cmd.Value,
@@ -88,13 +88,17 @@ func repl(client kvv1.KvServiceClient) {
 				fmt.Printf("failed to set: %v\n", err)
 				continue
 			}
-			fmt.Printf("response: %v\n", resp)
+			fmt.Printf("Key set\n")
 		case "get":
 			resp, err := client.Query(context.Background(), &kvv1.QueryRequest{
 				Key: cmd.Key,
 			})
 			if err != nil {
 				fmt.Printf("failed to get: %v\n", err)
+				continue
+			}
+			if e := resp.GetError(); e != nil {
+				fmt.Printf("key not found: %s\n", e.Message)
 				continue
 			}
 			fmt.Printf("value: %s\n", resp.GetPair().Value)
@@ -105,6 +109,7 @@ func repl(client kvv1.KvServiceClient) {
 			if err != nil {
 				fmt.Printf("failed to delete: %v\n", err)
 			}
+			fmt.Printf("Key deleted\n")
 		case "exit":
 			return
 		default:

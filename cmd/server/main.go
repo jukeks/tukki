@@ -15,19 +15,23 @@ import (
 	"google.golang.org/grpc"
 )
 
+func defaultDatabaseDir() string {
+	tmpDir := os.TempDir()
+	return filepath.Join(tmpDir, "tukki")
+}
+
 var (
-	port = flag.Int("port", 50051, "The server port")
+	port  = flag.Int("port", 50051, "The server port")
+	dbDir = flag.String("db-dir", defaultDatabaseDir(), "The directory to store the database")
 )
 
 func main() {
-	tmpDir := os.TempDir()
-	dbDir := filepath.Join(tmpDir, "tukki")
-	err := os.MkdirAll(dbDir, 0755)
+	err := os.MkdirAll(*dbDir, 0755)
 	if err != nil {
 		log.Fatalf("failed to create db dir: %v", err)
 	}
 
-	db, err := db.OpenDatabase(dbDir)
+	db, err := db.OpenDatabase(*dbDir)
 	if err != nil {
 		log.Fatalf("failed to open database: %v", err)
 	}
