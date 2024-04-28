@@ -17,12 +17,14 @@ func TestEnsureTempDirectory(t *testing.T) {
 		t.Fatalf("expected dir to be absolute")
 	}
 
-	// ensure dir is in tmp (whatever the OS temp dir is)
+	parentDir := filepath.Dir(dir)
+	if parentDir[len(parentDir)-1] != os.PathSeparator {
+		parentDir = parentDir + string(os.PathSeparator)
+	}
 
-	if filepath.Dir(dir) != os.TempDir() {
-		t.Errorf("TempDir: %s, dir of tempdir: %s", os.TempDir(), filepath.Dir(os.TempDir()))
-		t.Errorf("dir %s, dir of dir: %s", dir, filepath.Dir(dir))
-		t.Fatalf("expected dir to be in %s, got %s", os.TempDir(), filepath.Dir(dir))
+	// ensure dir is in tmp (whatever the OS temp dir is)
+	if parentDir != os.TempDir() {
+		t.Fatalf("expected dir to be in %s, got %s", os.TempDir(), parentDir)
 	}
 
 	// ensure dir exists
