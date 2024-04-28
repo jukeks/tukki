@@ -10,7 +10,7 @@ import (
 	"github.com/jukeks/tukki/internal/storage"
 	testutil "github.com/jukeks/tukki/tests/util"
 
-	journalv1 "github.com/jukeks/tukki/proto/gen/tukki/storage/journal/v1"
+	walv1 "github.com/jukeks/tukki/proto/gen/tukki/storage/wal/v1"
 )
 
 func TestJournalWriter(t *testing.T) {
@@ -19,7 +19,7 @@ func TestJournalWriter(t *testing.T) {
 	defer os.Remove(f.Name())
 
 	journalWriter := NewJournalWriter(f)
-	err := journalWriter.Write(&journalv1.JournalEntry{
+	err := journalWriter.Write(&walv1.WalEntry{
 		Key:     "key",
 		Value:   "value",
 		Deleted: false,
@@ -35,7 +35,7 @@ func TestJournalWriter(t *testing.T) {
 	defer readerFile.Close()
 	journalReader := NewJournalReader(readerFile)
 
-	journalEntry := journalv1.JournalEntry{}
+	journalEntry := walv1.WalEntry{}
 	err = journalReader.Read(&journalEntry)
 	if err != nil {
 		t.Fatalf("failed to read journal entry: %v", err)
@@ -68,14 +68,14 @@ func TestOpenJournal(t *testing.T) {
 		t.Fatalf("journal is nil")
 	}
 
-	err = j.Writer.Write(&journalv1.JournalEntry{
+	err = j.Writer.Write(&walv1.WalEntry{
 		Key:   "key1",
 		Value: "value1",
 	})
 	if err != nil {
 		t.Fatalf("failed to write journal entry: %v", err)
 	}
-	err = j.Writer.Write(&journalv1.JournalEntry{
+	err = j.Writer.Write(&walv1.WalEntry{
 		Key:   "key2",
 		Value: "value2",
 	})
@@ -88,10 +88,10 @@ func TestOpenJournal(t *testing.T) {
 		t.Fatalf("failed to close journal: %v", err)
 	}
 
-	var entries []*journalv1.JournalEntry
+	var entries []*walv1.WalEntry
 	j, err = OpenJournal(dbDir, filename, func(r *JournalReader) error {
 		for {
-			journalEntry := &journalv1.JournalEntry{}
+			journalEntry := &walv1.WalEntry{}
 			err := r.Read(journalEntry)
 			if err != nil {
 				if err == io.EOF {

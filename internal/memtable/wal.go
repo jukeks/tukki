@@ -6,7 +6,7 @@ import (
 
 	"github.com/jukeks/tukki/internal/journal"
 	"github.com/jukeks/tukki/internal/storage"
-	journalv1 "github.com/jukeks/tukki/proto/gen/tukki/storage/journal/v1"
+	walv1 "github.com/jukeks/tukki/proto/gen/tukki/storage/wal/v1"
 )
 
 type MembtableJournal struct {
@@ -29,7 +29,7 @@ func OpenWal(dbDir string, journalName storage.Filename, mt Memtable) (*Membtabl
 }
 
 func (mtj *MembtableJournal) Set(key, value string) error {
-	return mtj.journal.Writer.Write(&journalv1.JournalEntry{
+	return mtj.journal.Writer.Write(&walv1.WalEntry{
 		Key:     key,
 		Value:   value,
 		Deleted: false,
@@ -37,7 +37,7 @@ func (mtj *MembtableJournal) Set(key, value string) error {
 }
 
 func (mtj *MembtableJournal) Delete(key string) error {
-	return mtj.journal.Writer.Write(&journalv1.JournalEntry{
+	return mtj.journal.Writer.Write(&walv1.WalEntry{
 		Key:     key,
 		Deleted: true,
 	})
@@ -49,7 +49,7 @@ func (mtj *MembtableJournal) Close() error {
 
 func readJournal(journalReader *journal.JournalReader, mt Memtable) error {
 	for {
-		journalEntry := &journalv1.JournalEntry{}
+		journalEntry := &walv1.WalEntry{}
 		err := journalReader.Read(journalEntry)
 		if err != nil {
 			if err == io.EOF {
