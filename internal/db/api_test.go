@@ -1,15 +1,16 @@
-package segments
+package db
 
 import (
 	"testing"
 
+	"github.com/jukeks/tukki/internal/segments"
 	testutil "github.com/jukeks/tukki/tests/util"
 	"github.com/thanhpk/randstr"
 )
 
 func TestSegmentManagerGetSegmentsSorted(t *testing.T) {
-	sm := SegmentManager{
-		segments: map[SegmentId]Segment{
+	db := Database{
+		segments: map[segments.SegmentId]segments.Segment{
 			1: {
 				Id:       1,
 				Filename: "segment1",
@@ -25,7 +26,7 @@ func TestSegmentManagerGetSegmentsSorted(t *testing.T) {
 		},
 	}
 
-	segments := sm.GetSegmentsSorted()
+	segments := db.getSegmentsSorted()
 	if len(segments) != 3 {
 		t.Errorf("expected 3 segments, got %d", len(segments))
 	}
@@ -41,30 +42,36 @@ func TestSegmentManagerGetSegmentsSorted(t *testing.T) {
 	}
 }
 
-func TestSegmentManagerGet(t *testing.T) {
+func TestGetFromSegments(t *testing.T) {
 	dbDir := testutil.EnsureTempDirectory("test-tukki-segments-" + randstr.String(10))
-	sm, err := OpenDatabase(dbDir)
+	db, err := OpenDatabase(dbDir)
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
 
-	ongoing := sm.GetOnGoingSegment()
-
 	key := randstr.String(10)
 	value := randstr.String(10)
-	writeToWalAndMemtable(t, ongoing, key, value)
-
-	_, err = sm.Get(key)
-	if err != ErrKeyNotFound {
-		t.Fatalf("expected key not found error, got %v", err)
+	err = db.Set(key, value)
+	if err != nil {
+		t.Fatalf("failed to set key-value pair: %v", err)
 	}
 
-	_, err = sm.SealCurrentSegment()
+	_, found := db.ongoing.Memtable.Get(key)
+	if !found {
+		t.Fatalf("key not found in memtable")
+	}
+
+	_, err = db.SealCurrentSegment()
 	if err != nil {
 		t.Fatalf("failed to seal segment: %v", err)
 	}
 
-	val, err := sm.Get(key)
+	_, found = db.ongoing.Memtable.Get(key)
+	if found {
+		t.Fatalf("key found in memtable")
+	}
+
+	val, err := db.Get(key)
 	if err != nil {
 		t.Fatalf("failed to get value: %v", err)
 	}

@@ -4,23 +4,30 @@ import (
 	"log"
 	"os"
 
+	"github.com/jukeks/tukki/internal/memtable"
 	"github.com/jukeks/tukki/internal/sstable"
 	"github.com/jukeks/tukki/internal/storage"
 	segmentsv1 "github.com/jukeks/tukki/proto/gen/tukki/storage/segments/v1"
 )
 
+type OpenSegment struct {
+	Segment     Segment
+	WalFilename storage.Filename
+	Memtable    memtable.Memtable
+}
+
 type AddSegmentOperation struct {
 	id                OperationId
 	dbDir             string
-	completingSegment *LiveSegment
-	newSegment        *LiveSegment
+	completingSegment *OpenSegment
+	newSegment        *OpenSegment
 }
 
 func NewAddSegmentOperation(
 	id OperationId,
 	dbDir string,
-	completingSegment *LiveSegment,
-	newSegment *LiveSegment) *AddSegmentOperation {
+	completingSegment *OpenSegment,
+	newSegment *OpenSegment) *AddSegmentOperation {
 
 	return &AddSegmentOperation{
 		id:                id,

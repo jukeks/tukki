@@ -33,7 +33,7 @@ func OpenSegmentOperationJournal(dbDir string) (
 }
 
 type CurrentSegments struct {
-	Ongoing    *LiveSegment
+	Ongoing    *OpenSegment
 	Segments   map[SegmentId]Segment
 	Operations map[OperationId]SegmentOperation
 }
@@ -44,7 +44,7 @@ func readOperationJournal(r *journal.JournalReader) (
 
 	operations := make(map[OperationId]SegmentOperation)
 	segments := make(map[SegmentId]Segment)
-	var ongoing *LiveSegment
+	var ongoing *OpenSegment
 
 	for {
 		journalEntry := &segmentsv1.SegmentOperationJournalEntry{}
@@ -94,9 +94,9 @@ func segmentOperationFromProto(proto *segmentsv1.SegmentOperation) SegmentOperat
 	case *segmentsv1.SegmentOperation_Add:
 		addOperation := proto.GetAdd()
 		completingSegmentPb := addOperation.CompletingSegment
-		var completingSegment *LiveSegment
+		var completingSegment *OpenSegment
 		if completingSegmentPb != nil {
-			completingSegment = &LiveSegment{
+			completingSegment = &OpenSegment{
 				WalFilename: storage.Filename(completingSegmentPb.WalFilename),
 				Segment: Segment{
 					Id:       SegmentId(completingSegmentPb.Segment.Id),
@@ -108,7 +108,7 @@ func segmentOperationFromProto(proto *segmentsv1.SegmentOperation) SegmentOperat
 		return &AddSegmentOperation{
 			id:                OperationId(proto.Id),
 			completingSegment: completingSegment,
-			newSegment: &LiveSegment{
+			newSegment: &OpenSegment{
 				WalFilename: storage.Filename(newSegmentPb.WalFilename),
 				Segment: Segment{
 					Id:       SegmentId(newSegmentPb.Segment.Id),

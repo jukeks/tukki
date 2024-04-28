@@ -1,20 +1,21 @@
-package segments
+package db
 
 import (
 	"github.com/jukeks/tukki/internal/memtable"
+	"github.com/jukeks/tukki/internal/segments"
 	"github.com/jukeks/tukki/internal/storage"
 )
 
 type LiveSegment struct {
 	WalFilename storage.Filename
-	Segment     Segment
+	Segment     segments.Segment
 	Memtable    memtable.Memtable
 	Wal         *memtable.MembtableJournal
 }
 
-func NewLiveSegment(id SegmentId) *LiveSegment {
+func NewLiveSegment(id segments.SegmentId) *LiveSegment {
 	return &LiveSegment{
-		Segment: Segment{
+		Segment: segments.Segment{
 			Id:       id,
 			Filename: getSegmentFilename(id),
 		},
