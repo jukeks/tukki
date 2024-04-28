@@ -17,6 +17,7 @@ func TestEnsureTempDirectory(t *testing.T) {
 		t.Fatalf("expected dir to be absolute")
 	}
 
+	// have to clean the paths to make them comparable on both linux and macos
 	parentDir := filepath.Dir(dir)
 	parentDir = filepath.Clean(parentDir)
 	osTempDir := os.TempDir()
