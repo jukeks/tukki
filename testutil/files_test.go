@@ -18,13 +18,13 @@ func TestEnsureTempDirectory(t *testing.T) {
 	}
 
 	parentDir := filepath.Dir(dir)
-	if parentDir[len(parentDir)-1] != os.PathSeparator {
-		parentDir = parentDir + string(os.PathSeparator)
-	}
+	parentDir = filepath.Clean(parentDir)
+	osTempDir := os.TempDir()
+	osTempDir = filepath.Clean(osTempDir)
 
 	// ensure dir is in tmp (whatever the OS temp dir is)
-	if parentDir != os.TempDir() {
-		t.Fatalf("expected dir to be in %s, got %s", os.TempDir(), parentDir)
+	if parentDir != osTempDir {
+		t.Fatalf("expected dir to be in %s, got %s", osTempDir, parentDir)
 	}
 
 	// ensure dir exists
