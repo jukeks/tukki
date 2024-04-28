@@ -13,12 +13,9 @@ import (
 var ErrKeyNotFound = errors.New("key not found in segments")
 
 func (db *Database) Get(key string) (string, error) {
-	value, found := db.ongoing.Memtable.Get(key)
-	if found {
-		if value.Deleted {
-			return "", ErrKeyNotFound
-		}
-		return value.Value, nil
+	value, err := db.ongoing.Get(key)
+	if err == nil {
+		return value, nil
 	}
 
 	return db.getFromSegments(key)
