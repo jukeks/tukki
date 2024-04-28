@@ -1,15 +1,22 @@
 package main
 
 import (
-	"bufio"
+	"context"
+	"flag"
 	"fmt"
-	"io"
 	"log"
+	"net"
 	"os"
 	"path/filepath"
-	"strings"
+	"sync"
 
 	"github.com/jukeks/tukki/internal/db"
+	kvv1 "github.com/jukeks/tukki/proto/gen/tukki/rpc/kv/v1"
+	"google.golang.org/grpc"
+)
+
+var (
+	port = flag.Int("port", 50051, "The server port")
 )
 
 func main() {
@@ -24,76 +31,65 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to open database: %v", err)
 	}
-	repl(db)
+
+	flag.Parse()
+	ls, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", *port))
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+
+	kvServer := NewKvServer(db)
+
+	grpcServer := grpc.NewServer()
+	kvv1.RegisterKvServiceServer(grpcServer, kvServer)
+	grpcServer.Serve(ls)
 }
 
-type Command struct {
-	Cmd   string
-	Key   string
-	Value string
+type kvServer struct {
+	kvv1.UnimplementedKvServiceServer
+	lock sync.RWMutex
+	db   *db.Database
 }
 
-func readAndParse(reader *bufio.Reader) (*Command, error) {
-	input, err := reader.ReadString('\n')
+func NewKvServer(db *db.Database) *kvServer {
+	return &kvServer{db: db}
+}
+
+func (s *kvServer) Query(ctx context.Context, req *kvv1.QueryRequest) (*kvv1.QueryResponse, error) {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+
+	value, err := s.db.Get(req.Key)
 	if err != nil {
 		return nil, err
 	}
 
-	parts := strings.Fields(strings.TrimSpace(input))
-
-	if len(parts) < 2 {
-		return nil, fmt.Errorf("invalid input, expected at least 2 parts")
-	}
-
-	cmd := &Command{
-		Cmd: strings.ToLower(parts[0]),
-		Key: parts[1],
-	}
-
-	if len(parts) > 2 {
-		cmd.Value = strings.Join(parts[2:], " ")
-	}
-
-	return cmd, nil
+	return &kvv1.QueryResponse{Value: &kvv1.QueryResponse_Pair{Pair: &kvv1.KvPair{
+		Key:   req.Key,
+		Value: value,
+	}}}, nil
 }
 
-func repl(db *db.Database) {
-	reader := bufio.NewReader(os.Stdin)
+func (s *kvServer) Set(ctx context.Context, req *kvv1.SetRequest) (*kvv1.SetResponse, error) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
 
-	for {
-		fmt.Printf("> ")
-		cmd, err := readAndParse(reader)
-		if err != nil {
-			if err == io.EOF {
-				fmt.Println()
-				break
-			}
-			fmt.Printf("failed to read command: %v\n", err)
-			continue
-		}
-
-		switch cmd.Cmd {
-		case "set":
-			err = db.Set(cmd.Key, cmd.Value)
-			if err != nil {
-				fmt.Printf("failed to set: %v\n", err)
-			}
-		case "get":
-			value, err := db.Get(cmd.Key)
-			if err != nil {
-				fmt.Printf("failed to get: %v\n", err)
-				continue
-			}
-			fmt.Printf("value: %s\n", value)
-		case "delete":
-			err = db.Delete(cmd.Key)
-			if err != nil {
-				fmt.Printf("failed to delete: %v\n", err)
-			}
-		case "exit":
-			return
-		default:
-			fmt.Printf("unknown command: %s\n", cmd.Cmd)
-		}
+	err := s.db.Set(req.Pair.Key, req.Pair.Value)
+	if err != nil {
+		return nil, err
 	}
+
+	return &kvv1.SetResponse{}, nil
+}
+
+func (s *kvServer) Delete(ctx context.Context, req *kvv1.DeleteRequest) (*kvv1.DeleteResponse, error) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	err := s.db.Delete(req.Key)
+	if err != nil {
+		return nil, err
+	}
+
+	return &kvv1.DeleteResponse{}, nil
 }

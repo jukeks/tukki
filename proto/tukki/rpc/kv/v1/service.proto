@@ -1,0 +1,48 @@
+syntax="proto3";
+
+package tukki.rpc.kv.v1;
+
+option go_package = "github.com/jukeks/tukki/rpc/kv";
+
+
+service KvService {
+    rpc Query(QueryRequest) returns (QueryResponse) {}
+    rpc Set(SetRequest) returns (SetResponse) {}
+    rpc Delete(DeleteRequest) returns (DeleteResponse) {}
+}
+
+message QueryRequest {
+    string key = 1;
+}
+
+message SetRequest {
+    KvPair pair = 1;
+}
+
+message DeleteRequest {
+    string key = 1;
+}
+
+message KvPair {
+    string key = 1;
+    string value = 2;
+}
+
+message Error {
+    string message = 1;
+}
+
+message QueryResponse {
+    oneof value {
+        Error error = 1;
+        KvPair pair = 2;
+    }
+}
+
+message SetResponse {
+    Error error = 1;
+}
+
+message DeleteResponse {
+    Error error = 1;
+}
