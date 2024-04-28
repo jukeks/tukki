@@ -173,8 +173,12 @@ func TestMergeSegments(t *testing.T) {
 		t.Fatalf("expected ongoing segment id to be 1, got %d", ongoing.Segment.Id)
 	}
 
-	writeLiveSegment(t, ongoing, "key1", "value1")
-	writeLiveSegment(t, ongoing, "key2", "value2")
+	writeLiveSegment(t, ongoing, "key3", "value3")
+	writeLiveSegment(t, ongoing, "key4", "value4")
+	err = ongoing.Delete("key2")
+	if err != nil {
+		t.Fatalf("failed to delete key: %v", err)
+	}
 	if err := ongoing.Close(); err != nil {
 		t.Fatalf("failed to close ongoing segment: %v", err)
 	}

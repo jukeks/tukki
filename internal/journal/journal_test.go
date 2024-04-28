@@ -1,0 +1,127 @@
+package journal
+
+import (
+	"io"
+	"os"
+	"testing"
+
+	"github.com/thanhpk/randstr"
+
+	"github.com/jukeks/tukki/internal/storage"
+	testutil "github.com/jukeks/tukki/tests/util"
+
+	journalv1 "github.com/jukeks/tukki/proto/gen/tukki/storage/journal/v1"
+)
+
+func TestJournalWriter(t *testing.T) {
+	f := testutil.CreateTempFile("test-tukki", "")
+	defer f.Close()
+	defer os.Remove(f.Name())
+
+	journalWriter := NewJournalWriter(f)
+	err := journalWriter.Write(&journalv1.JournalEntry{
+		Key:     "key",
+		Value:   "value",
+		Deleted: false,
+	})
+	if err != nil {
+		t.Fatalf("failed to write journal entry: %v", err)
+	}
+
+	readerFile, err := os.Open(f.Name())
+	if err != nil {
+		t.Fatalf("failed to open journal file: %v", err)
+	}
+	defer readerFile.Close()
+	journalReader := NewJournalReader(readerFile)
+
+	journalEntry := journalv1.JournalEntry{}
+	err = journalReader.Read(&journalEntry)
+	if err != nil {
+		t.Fatalf("failed to read journal entry: %v", err)
+	}
+
+	if journalEntry.Key != "key" {
+		t.Fatalf("expected key to be 'key', got '%s'", journalEntry.Key)
+	}
+
+	if journalEntry.Value != "value" {
+		t.Fatalf("expected value to be 'value', got '%s'", journalEntry.Value)
+	}
+
+	if journalEntry.Deleted != false {
+		t.Fatalf("expected deleted to be false, got '%v'", journalEntry.Deleted)
+	}
+}
+
+func TestOpenJournal(t *testing.T) {
+	dbDir := testutil.EnsureTempDirectory("test-tukki-" + randstr.String(10))
+	filename := storage.Filename(randstr.String(10))
+
+	j, err := OpenJournal(dbDir, filename, func(r *JournalReader) error {
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("failed to create journal: %v", err)
+	}
+	if j == nil {
+		t.Fatalf("journal is nil")
+	}
+
+	err = j.Writer.Write(&journalv1.JournalEntry{
+		Key:   "key1",
+		Value: "value1",
+	})
+	if err != nil {
+		t.Fatalf("failed to write journal entry: %v", err)
+	}
+	err = j.Writer.Write(&journalv1.JournalEntry{
+		Key:   "key2",
+		Value: "value2",
+	})
+	if err != nil {
+		t.Fatalf("failed to write journal entry: %v", err)
+	}
+
+	err = j.Close()
+	if err != nil {
+		t.Fatalf("failed to close journal: %v", err)
+	}
+
+	var entries []*journalv1.JournalEntry
+	j, err = OpenJournal(dbDir, filename, func(r *JournalReader) error {
+		for {
+			journalEntry := &journalv1.JournalEntry{}
+			err := r.Read(journalEntry)
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				return err
+			}
+			entries = append(entries, journalEntry)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("failed to open journal: %v", err)
+	}
+
+	if len(entries) != 2 {
+		t.Fatalf("expected 2 entries, got %d", len(entries))
+	}
+	if entries[0].Key != "key1" {
+		t.Fatalf("expected key1, got %s", entries[0].Key)
+	}
+	if entries[0].Value != "value1" {
+		t.Fatalf("expected value1, got %s", entries[0].Value)
+	}
+	if entries[1].Key != "key2" {
+		t.Fatalf("expected key2, got %s", entries[1].Key)
+	}
+	if entries[1].Value != "value2" {
+		t.Fatalf("expected value2, got %s", entries[1].Value)
+	}
+
+	j.Close()
+}
