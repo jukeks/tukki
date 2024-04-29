@@ -7,6 +7,7 @@ option go_package = "github.com/jukeks/tukki/db/segments";
 message Segment {
     uint64 id = 1;
     string filename = 2;
+    string bloom_filename = 3;
 }
 
 message LiveSegment {

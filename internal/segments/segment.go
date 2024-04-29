@@ -5,6 +5,7 @@ import "github.com/jukeks/tukki/internal/storage"
 type SegmentId uint64
 
 type SegmentMetadata struct {
-	Id       SegmentId
-	Filename storage.Filename
+	Id          SegmentId
+	SegmentFile storage.Filename
+	BloomFile   storage.Filename
 }

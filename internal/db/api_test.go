@@ -12,16 +12,16 @@ func TestSegmentManagerGetSegmentsSorted(t *testing.T) {
 	db := Database{
 		segments: map[segments.SegmentId]segments.SegmentMetadata{
 			1: {
-				Id:       1,
-				Filename: "segment1",
+				Id:          1,
+				SegmentFile: "segment1",
 			},
 			3: {
-				Id:       3,
-				Filename: "segment3",
+				Id:          3,
+				SegmentFile: "segment3",
 			},
 			2: {
-				Id:       2,
-				Filename: "segment2",
+				Id:          2,
+				SegmentFile: "segment2",
 			},
 		},
 	}

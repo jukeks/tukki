@@ -16,8 +16,8 @@ type LiveSegment struct {
 func NewLiveSegment(id segments.SegmentId) *LiveSegment {
 	return &LiveSegment{
 		Segment: segments.SegmentMetadata{
-			Id:       id,
-			Filename: getSegmentFilename(id),
+			Id:          id,
+			SegmentFile: getSegmentFilename(id),
 		},
 		WalFilename: getWalFilename(id),
 	}

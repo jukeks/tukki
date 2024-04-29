@@ -31,19 +31,14 @@ func (o *MergeSegmentsOperation) Id() OperationId {
 
 func (o *MergeSegmentsOperation) StartJournalEntry() *segmentsv1.SegmentOperationJournalEntry {
 	mergeOperation := &segmentsv1.MergeSegments{
-		NewSegment: &segmentsv1.Segment{
-			Id:       uint64(o.mergedSegment.Id),
-			Filename: string(o.mergedSegment.Filename),
-		},
+		NewSegment: segmentMetadataToPb(&o.mergedSegment),
 	}
 
 	for _, segment := range o.segmentsToMerge {
 		mergeOperation.SegmentsToMerge = append(
 			mergeOperation.SegmentsToMerge,
-			&segmentsv1.Segment{
-				Id:       uint64(segment.Id),
-				Filename: string(segment.Filename),
-			})
+			segmentMetadataToPb(&segment),
+		)
 	}
 
 	entry := &segmentsv1.SegmentOperationJournalEntry{
@@ -71,14 +66,14 @@ func (o *MergeSegmentsOperation) CompletedJournalEntry() *segmentsv1.SegmentOper
 }
 
 func (o *MergeSegmentsOperation) Execute() error {
-	mergedPath := storage.GetPath(o.dbDir, o.mergedSegment.Filename)
+	mergedPath := storage.GetPath(o.dbDir, o.mergedSegment.SegmentFile)
 	mergedFile, err := os.Create(mergedPath)
 	if err != nil {
 		log.Printf("failed to create file: %v", err)
 		return err
 	}
 
-	aPath := storage.GetPath(o.dbDir, o.segmentsToMerge[0].Filename)
+	aPath := storage.GetPath(o.dbDir, o.segmentsToMerge[0].SegmentFile)
 	aFile, err := os.Open(aPath)
 	if err != nil {
 		log.Printf("failed to open file: %v", err)
@@ -87,7 +82,7 @@ func (o *MergeSegmentsOperation) Execute() error {
 	defer aFile.Close()
 	aReader := sstable.NewSSTableReader(aFile)
 
-	bPath := storage.GetPath(o.dbDir, o.segmentsToMerge[1].Filename)
+	bPath := storage.GetPath(o.dbDir, o.segmentsToMerge[1].SegmentFile)
 	bFile, err := os.Open(bPath)
 	if err != nil {
 		log.Printf("failed to open file: %v", err)

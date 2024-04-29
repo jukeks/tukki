@@ -12,6 +12,7 @@ type Memtable interface {
 	Insert(key string, value string)
 	Delete(key string)
 	Iterate() keyvalue.KeyValueIterator
+	Size() int
 }
 
 func NewMemtable() Memtable {
@@ -69,4 +70,8 @@ func (m *memtableRedBlackTree) Iterate() keyvalue.KeyValueIterator {
 	return &memtableRedBlackTreeIterator{
 		iter: &iter,
 	}
+}
+
+func (m *memtableRedBlackTree) Size() int {
+	return m.t.Size()
 }

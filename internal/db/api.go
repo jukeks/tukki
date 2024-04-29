@@ -24,7 +24,7 @@ func (db *Database) Get(key string) (string, error) {
 
 func (db *Database) getFromSegments(key string) (string, error) {
 	for _, segment := range db.getSegmentsSorted() {
-		segmentPath := storage.GetPath(db.dbDir, segment.Filename)
+		segmentPath := storage.GetPath(db.dbDir, segment.SegmentFile)
 		segmentFile, err := os.Open(segmentPath)
 		if err != nil {
 			return "", err

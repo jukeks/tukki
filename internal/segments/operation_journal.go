@@ -89,6 +89,22 @@ func readOperationJournal(r *journal.JournalReader) (
 	}, nil
 }
 
+func pbToSegmentMetadata(segmentPb *segmentsv1.Segment) *SegmentMetadata {
+	return &SegmentMetadata{
+		Id:          SegmentId(segmentPb.Id),
+		SegmentFile: storage.Filename(segmentPb.Filename),
+		BloomFile:   storage.Filename(segmentPb.BloomFilename),
+	}
+}
+
+func segmentMetadataToPb(segment *SegmentMetadata) *segmentsv1.Segment {
+	return &segmentsv1.Segment{
+		Id:            uint64(segment.Id),
+		Filename:      string(segment.SegmentFile),
+		BloomFilename: string(segment.BloomFile),
+	}
+}
+
 func segmentOperationFromProto(proto *segmentsv1.SegmentOperation) SegmentOperation {
 	switch proto.Operation.(type) {
 	case *segmentsv1.SegmentOperation_Add:
@@ -98,10 +114,7 @@ func segmentOperationFromProto(proto *segmentsv1.SegmentOperation) SegmentOperat
 		if completingSegmentPb != nil {
 			completingSegment = &OpenSegment{
 				WalFilename: storage.Filename(completingSegmentPb.WalFilename),
-				Segment: SegmentMetadata{
-					Id:       SegmentId(completingSegmentPb.Segment.Id),
-					Filename: storage.Filename(completingSegmentPb.Segment.Filename),
-				},
+				Segment:     *pbToSegmentMetadata(completingSegmentPb.Segment),
 			}
 		}
 		newSegmentPb := addOperation.NewSegment
@@ -110,28 +123,19 @@ func segmentOperationFromProto(proto *segmentsv1.SegmentOperation) SegmentOperat
 			completingSegment: completingSegment,
 			newSegment: &OpenSegment{
 				WalFilename: storage.Filename(newSegmentPb.WalFilename),
-				Segment: SegmentMetadata{
-					Id:       SegmentId(newSegmentPb.Segment.Id),
-					Filename: storage.Filename(newSegmentPb.Segment.Filename),
-				},
+				Segment:     *pbToSegmentMetadata(newSegmentPb.Segment),
 			},
 		}
 	case *segmentsv1.SegmentOperation_Merge:
 		mergeOperation := proto.GetMerge()
 		segmentsToMerge := make([]SegmentMetadata, len(mergeOperation.SegmentsToMerge))
 		for i, segmentProto := range mergeOperation.SegmentsToMerge {
-			segmentsToMerge[i] = SegmentMetadata{
-				Id:       SegmentId(segmentProto.Id),
-				Filename: storage.Filename(segmentProto.Filename),
-			}
+			segmentsToMerge[i] = *pbToSegmentMetadata(segmentProto)
 		}
 		return &MergeSegmentsOperation{
 			id:              OperationId(proto.Id),
 			segmentsToMerge: segmentsToMerge,
-			mergedSegment: SegmentMetadata{
-				Id:       SegmentId(mergeOperation.NewSegment.Id),
-				Filename: storage.Filename(mergeOperation.NewSegment.Filename),
-			},
+			mergedSegment:   *pbToSegmentMetadata(mergeOperation.NewSegment),
 		}
 	}
 

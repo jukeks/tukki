@@ -46,10 +46,7 @@ func (o *AddSegmentOperation) StartJournalEntry() *segmentsv1.SegmentOperationJo
 	if o.completingSegment != nil {
 		completingSegment = &segmentsv1.LiveSegment{
 			WalFilename: string(o.completingSegment.WalFilename),
-			Segment: &segmentsv1.Segment{
-				Id:       uint64(o.completingSegment.Segment.Id),
-				Filename: string(o.completingSegment.Segment.Filename),
-			},
+			Segment:     segmentMetadataToPb(&o.completingSegment.Segment),
 		}
 	}
 
@@ -62,10 +59,7 @@ func (o *AddSegmentOperation) StartJournalEntry() *segmentsv1.SegmentOperationJo
 						CompletingSegment: completingSegment,
 						NewSegment: &segmentsv1.LiveSegment{
 							WalFilename: string(o.newSegment.WalFilename),
-							Segment: &segmentsv1.Segment{
-								Id:       uint64(o.newSegment.Segment.Id),
-								Filename: string(o.newSegment.Segment.Filename),
-							},
+							Segment:     segmentMetadataToPb(&o.newSegment.Segment),
 						},
 					},
 				},
@@ -88,7 +82,7 @@ func (o *AddSegmentOperation) Execute() error {
 	if o.completingSegment != nil {
 		completingSegment := o.completingSegment
 		// write completing segment to disk
-		path := storage.GetPath(o.dbDir, completingSegment.Segment.Filename)
+		path := storage.GetPath(o.dbDir, completingSegment.Segment.SegmentFile)
 		f, err := os.Create(path)
 		if err != nil {
 			log.Printf("failed to create file: %v", err)

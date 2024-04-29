@@ -195,8 +195,8 @@ func (db *Database) MergeSegments(a, b segments.SegmentId) error {
 	segmentB := db.segments[b]
 
 	mergedSegment := segments.SegmentMetadata{
-		Id:       segmentB.Id,
-		Filename: getMergedSegmentFilename(segmentA.Id, segmentB.Id),
+		Id:          segmentB.Id,
+		SegmentFile: getMergedSegmentFilename(segmentA.Id, segmentB.Id),
 	}
 
 	op := segments.NewMergeSegmentsOperation(db.getNextOperationId(), db.dbDir, []segments.SegmentMetadata{segmentA, segmentB}, mergedSegment)
