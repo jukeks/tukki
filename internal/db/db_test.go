@@ -240,7 +240,7 @@ func TestSegmentRotated(t *testing.T) {
 
 	written := 0
 	kvMap := make(map[string]string)
-	for i := 0; i < 200; i++ {
+	for written < int(db.walSizeLimit)*3/2 {
 		key := randstr.String(10)
 		value := randstr.String(16 * 1024)
 		err = db.Set(key, value)
