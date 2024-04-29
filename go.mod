@@ -1,6 +1,6 @@
 module github.com/jukeks/tukki
 
-go 1.22.0
+go 1.21.9
 
 require (
 	github.com/emirpasic/gods v1.18.1
