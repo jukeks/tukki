@@ -33,6 +33,10 @@ func (db *Database) getFromSegments(key string) (string, error) {
 
 		reader := sstable.NewSSTableReader(segmentFile)
 		for entry, err := reader.Next(); err == nil; entry, err = reader.Next() {
+			if entry.Key > key {
+				break
+			}
+
 			if entry.Key == key {
 				if entry.Deleted {
 					return "", ErrKeyNotFound
