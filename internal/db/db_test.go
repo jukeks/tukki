@@ -240,9 +240,9 @@ func TestSegmentRotated(t *testing.T) {
 
 	written := 0
 	kvMap := make(map[string]string)
-	for written < int(db.walSizeLimit)*3/2 {
+	for written < int(db.walSizeLimit)*3 {
 		key := randstr.String(10)
-		value := randstr.String(16 * 1024)
+		value := randstr.String(512 * 1024)
 		err = db.Set(key, value)
 		if err != nil {
 			t.Fatalf("failed to set key-value pair: %v", err)
@@ -251,8 +251,8 @@ func TestSegmentRotated(t *testing.T) {
 		kvMap[key] = value
 	}
 
-	if db.ongoing.Segment.Id != 1 {
-		t.Fatalf("expected ongoing segment id to be 1, got %d", db.ongoing.Segment.Id)
+	if db.ongoing.Segment.Id != 2 {
+		t.Fatalf("expected ongoing segment id to be 2, got %d", db.ongoing.Segment.Id)
 	}
 
 	for k, v := range kvMap {
