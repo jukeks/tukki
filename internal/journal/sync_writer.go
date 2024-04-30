@@ -31,3 +31,7 @@ func (j *SynchronousJournalWriter) Write(journalEntry protoreflect.ProtoMessage)
 
 	return nil
 }
+
+func (j *SynchronousJournalWriter) Close() error {
+	return nil
+}

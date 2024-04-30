@@ -25,6 +25,7 @@ type WriteSyncer interface {
 
 type JournalWriter interface {
 	Write(journalEntry protoreflect.ProtoMessage) error
+	Close() error
 }
 
 type Journal struct {
@@ -78,9 +79,14 @@ func OpenJournal(dbDir string, journalName storage.Filename, writemode WriteMode
 }
 
 func (j *Journal) Close() error {
+	j.Writer.Close()
 	return j.File.Close()
 }
 
 func NewJournalWriter(w WriteSyncer, writeMode WriteMode) JournalWriter {
-	return &SynchronousJournalWriter{w: w, b: bufio.NewWriter(w)}
+	if writeMode == WriteModeSync {
+		return &SynchronousJournalWriter{w: w, b: bufio.NewWriter(w)}
+	}
+
+	return NewAsynchronousJournalWriter(w)
 }

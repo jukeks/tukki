@@ -20,7 +20,7 @@ func OpenWal(dbDir string, journalName storage.Filename, mt Memtable) (*Wal, err
 	if journalName == "" {
 		log.Fatalf("journal name is empty")
 	}
-	j, err := journal.OpenJournal(dbDir, journalName, journal.WriteModeSync, handle)
+	j, err := journal.OpenJournal(dbDir, journalName, journal.WriteModeAsync, handle)
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +44,7 @@ func (mtj *Wal) Delete(key string) error {
 }
 
 func (mtj *Wal) Close() error {
-	return mtj.journal.File.Close()
+	return mtj.journal.Close()
 }
 
 func readJournal(journalReader *journal.JournalReader, mt Memtable) error {

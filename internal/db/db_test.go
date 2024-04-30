@@ -242,7 +242,7 @@ func TestSegmentRotated(t *testing.T) {
 	kvMap := make(map[string]string)
 	for written < int(db.walSizeLimit)*3 {
 		key := randstr.String(10)
-		value := randstr.String(512 * 1024)
+		value := randstr.String(16 * 1024)
 		err = db.Set(key, value)
 		if err != nil {
 			t.Fatalf("failed to set key-value pair: %v", err)

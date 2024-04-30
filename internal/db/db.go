@@ -215,6 +215,11 @@ func (db *Database) SealCurrentSegment() (*LiveSegment, error) {
 }
 
 func (db *Database) Close() error {
+	err := db.ongoing.Close()
+	if err != nil {
+		log.Printf("failed to close wal: %v", err)
+		return err
+	}
 	return db.operationJournal.Close()
 }
 
