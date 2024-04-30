@@ -8,6 +8,8 @@ import (
 	segmentsv1 "github.com/jukeks/tukki/proto/gen/tukki/storage/segments/v1"
 )
 
+const SegmentJournalFilename = "segment_operations.journal"
+
 type SegmentOperationJournal struct {
 	journal *journal.Journal
 }
@@ -24,7 +26,8 @@ func OpenSegmentOperationJournal(dbDir string) (
 		return err
 	}
 
-	j, err := journal.OpenJournal(dbDir, "segment_operations.journal", handle)
+	j, err := journal.OpenJournal(dbDir, SegmentJournalFilename,
+		journal.WriteModeSync, handle)
 	if err != nil {
 		return nil, nil, err
 	}

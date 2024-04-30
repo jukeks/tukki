@@ -18,7 +18,7 @@ func TestJournalWriter(t *testing.T) {
 	defer f.Close()
 	defer os.Remove(f.Name())
 
-	journalWriter := NewJournalWriter(f)
+	journalWriter := NewJournalWriter(f, WriteModeSync)
 	err := journalWriter.Write(&walv1.WalEntry{
 		Key:     "key",
 		Value:   "value",
@@ -60,7 +60,7 @@ func TestOpenJournal(t *testing.T) {
 
 	filename := storage.Filename(randstr.String(10))
 
-	j, err := OpenJournal(dbDir, filename, func(r *JournalReader) error {
+	j, err := OpenJournal(dbDir, filename, WriteModeSync, func(r *JournalReader) error {
 		return nil
 	})
 	if err != nil {
@@ -91,7 +91,7 @@ func TestOpenJournal(t *testing.T) {
 	}
 
 	var entries []*walv1.WalEntry
-	j, err = OpenJournal(dbDir, filename, func(r *JournalReader) error {
+	j, err = OpenJournal(dbDir, filename, WriteModeSync, func(r *JournalReader) error {
 		for {
 			journalEntry := &walv1.WalEntry{}
 			err := r.Read(journalEntry)

@@ -20,7 +20,7 @@ func OpenWal(dbDir string, journalName storage.Filename, mt Memtable) (*Wal, err
 	if journalName == "" {
 		log.Fatalf("journal name is empty")
 	}
-	j, err := journal.OpenJournal(dbDir, journalName, handle)
+	j, err := journal.OpenJournal(dbDir, journalName, journal.WriteModeSync, handle)
 	if err != nil {
 		return nil, err
 	}
