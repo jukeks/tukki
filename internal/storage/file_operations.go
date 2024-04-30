@@ -60,5 +60,9 @@ func GetPath(dbDir string, filename Filename) string {
 	if dbDir == "" {
 		panic("dbDir is empty")
 	}
+	if filename == "" {
+		panic("filename is empty")
+	}
+
 	return filepath.Join(dbDir, string(filename))
 }

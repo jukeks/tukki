@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/jukeks/tukki/internal/memtable"
+	"github.com/jukeks/tukki/internal/segmentmembers"
 	"github.com/jukeks/tukki/internal/sstable"
 	testutil "github.com/jukeks/tukki/testutil"
 	"github.com/thanhpk/randstr"
@@ -115,7 +116,8 @@ func testMerge(t *testing.T, table1Len, table2Len int) {
 	reader1 := sstable.NewSSTableReader(f1)
 	reader2 := sstable.NewSSTableReader(f2)
 
-	sstable.MergeSSTables(f, reader1, reader2)
+	members := segmentmembers.NewSegmentMembers(uint(table1Len + table2Len))
+	sstable.MergeSSTables(f, reader1, reader2, members)
 
 	f, _ = os.Open(outfile)
 
@@ -184,7 +186,8 @@ func TestMergeUpdates(t *testing.T) {
 	reader1 := sstable.NewSSTableReader(f1)
 	reader2 := sstable.NewSSTableReader(f2)
 
-	sstable.MergeSSTables(f, reader1, reader2)
+	members := segmentmembers.NewSegmentMembers(100000)
+	sstable.MergeSSTables(f, reader1, reader2, members)
 
 	f, _ = os.Open(outfile)
 	mergeReader := sstable.NewSSTableReader(f)

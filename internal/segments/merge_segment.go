@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/jukeks/tukki/internal/segmentmembers"
 	"github.com/jukeks/tukki/internal/sstable"
 	"github.com/jukeks/tukki/internal/storage"
 	segmentsv1 "github.com/jukeks/tukki/proto/gen/tukki/storage/segments/v1"
@@ -65,6 +66,18 @@ func (o *MergeSegmentsOperation) CompletedJournalEntry() *segmentsv1.SegmentOper
 	return entry
 }
 
+func getEstimatedElementCount(dbDir string, segments []SegmentMetadata) (uint, error) {
+	var size uint
+	for _, segment := range segments {
+		members, err := segmentmembers.OpenSegmentMembers(dbDir, segment.BloomFile)
+		if err != nil {
+			return 0, err
+		}
+		size += members.Size()
+	}
+	return size, nil
+}
+
 func (o *MergeSegmentsOperation) Execute() error {
 	mergedPath := storage.GetPath(o.dbDir, o.mergedSegment.SegmentFile)
 	mergedFile, err := os.Create(mergedPath)
@@ -91,9 +104,21 @@ func (o *MergeSegmentsOperation) Execute() error {
 	defer bFile.Close()
 	bReader := sstable.NewSSTableReader(bFile)
 
-	err = sstable.MergeSSTables(mergedFile, aReader, bReader)
+	totalMembers, err := getEstimatedElementCount(o.dbDir, o.segmentsToMerge)
+	if err != nil {
+		log.Printf("failed to get estimated element count: %v", err)
+		return err
+	}
+	members := segmentmembers.NewSegmentMembers(totalMembers)
+
+	err = sstable.MergeSSTables(mergedFile, aReader, bReader, members)
 	if err != nil {
 		log.Printf("failed to merge sstables: %v", err)
+		return err
+	}
+	err = members.Save(o.dbDir, o.mergedSegment.BloomFile)
+	if err != nil {
+		log.Printf("failed to members: %v", err)
 		return err
 	}
 

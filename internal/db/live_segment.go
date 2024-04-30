@@ -18,6 +18,7 @@ func NewLiveSegment(id segments.SegmentId) *LiveSegment {
 		Segment: segments.SegmentMetadata{
 			Id:          id,
 			SegmentFile: getSegmentFilename(id),
+			BloomFile:   getBloomsFilename(id),
 		},
 		WalFilename: getWalFilename(id),
 	}

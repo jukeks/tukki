@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/jukeks/tukki/internal/memtable"
+	"github.com/jukeks/tukki/internal/segmentmembers"
 	"github.com/jukeks/tukki/internal/sstable"
 	"github.com/jukeks/tukki/internal/storage"
 	segmentsv1 "github.com/jukeks/tukki/proto/gen/tukki/storage/segments/v1"
@@ -107,6 +108,15 @@ func (o *AddSegmentOperation) Execute() error {
 		err = os.Remove(path)
 		if err != nil {
 			log.Printf("failed to remove file: %v", err)
+			return err
+		}
+
+		// populate bloom filter
+		members := segmentmembers.NewSegmentMembers(uint(completingSegment.Memtable.Size()))
+		members.Fill(completingSegment.Memtable.Iterate())
+		err = members.Save(o.dbDir, completingSegment.Segment.BloomFile)
+		if err != nil {
+			log.Printf("failed to save bloom filter: %v", err)
 			return err
 		}
 	}

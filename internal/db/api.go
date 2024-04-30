@@ -6,6 +6,7 @@ import (
 	"os"
 	"sort"
 
+	"github.com/jukeks/tukki/internal/segmentmembers"
 	"github.com/jukeks/tukki/internal/segments"
 	"github.com/jukeks/tukki/internal/sstable"
 	"github.com/jukeks/tukki/internal/storage"
@@ -22,8 +23,25 @@ func (db *Database) Get(key string) (string, error) {
 	return db.getFromSegments(key)
 }
 
+func (db *Database) checkKeyIsInSegmentMembers(segment segments.SegmentMetadata, key string) (bool, error) {
+	members, err := segmentmembers.OpenSegmentMembers(db.dbDir, segment.BloomFile)
+	if err != nil {
+		return false, err
+	}
+
+	return members.Contains(key), nil
+}
+
 func (db *Database) getFromSegments(key string) (string, error) {
 	for _, segment := range db.getSegmentsSorted() {
+		contains, err := db.checkKeyIsInSegmentMembers(segment, key)
+		if err != nil {
+			return "", err
+		}
+		if !contains {
+			continue
+		}
+
 		segmentPath := storage.GetPath(db.dbDir, segment.SegmentFile)
 		segmentFile, err := os.Open(segmentPath)
 		if err != nil {
