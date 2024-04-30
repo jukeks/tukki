@@ -67,18 +67,16 @@ func readOperationJournal(r *journal.JournalReader) (
 		case *segmentsv1.SegmentOperationJournalEntry_Completed:
 			completedId := OperationId(journalEntry.GetCompleted())
 			operation := operations[completedId]
-			switch operation.(type) {
+			switch op := operation.(type) {
 			case *AddSegmentOperation:
-				add := operation.(*AddSegmentOperation)
-				if add.completingSegment != nil {
-					segments[add.completingSegment.Segment.Id] = add.completingSegment.Segment
+				if op.completingSegment != nil {
+					segments[op.completingSegment.Segment.Id] = op.completingSegment.Segment
 				}
-				ongoing = add.newSegment
+				ongoing = op.newSegment
 			case *MergeSegmentsOperation:
-				merge := operation.(*MergeSegmentsOperation)
-				delete(segments, merge.segmentsToMerge[0].Id)
-				delete(segments, merge.segmentsToMerge[1].Id)
-				segments[merge.mergedSegment.Id] = merge.mergedSegment
+				delete(segments, op.segmentsToMerge[0].Id)
+				delete(segments, op.segmentsToMerge[1].Id)
+				segments[op.mergedSegment.Id] = op.mergedSegment
 			}
 
 			delete(operations, completedId)
