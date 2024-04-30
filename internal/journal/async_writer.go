@@ -92,6 +92,7 @@ func (j *AsynchronousJournalWriter) writer() {
 
 func (j *AsynchronousJournalWriter) processBatch() error {
 	closed := false
+	written := false
 messagesAvailable:
 	for {
 		select {
@@ -106,21 +107,25 @@ messagesAvailable:
 				fmt.Printf("failed to write journal entry: %v\n", err)
 				return err
 			}
+
+			written = true
 		default:
 			break messagesAvailable
 		}
 	}
 
-	err := j.b.Flush()
-	if err != nil {
-		fmt.Printf("failed to flush: %v\n", err)
-		return err
-	}
+	if written {
+		err := j.b.Flush()
+		if err != nil {
+			fmt.Printf("failed to flush: %v\n", err)
+			return err
+		}
 
-	err = j.w.Sync()
-	if err != nil {
-		fmt.Printf("failed to sync: %v\n", err)
-		return err
+		err = j.w.Sync()
+		if err != nil {
+			fmt.Printf("failed to sync: %v\n", err)
+			return err
+		}
 	}
 
 	if closed {
