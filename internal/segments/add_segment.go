@@ -111,12 +111,12 @@ func (o *AddSegmentOperation) Execute() error {
 			return err
 		}
 
-		// populate bloom filter
+		// populate segment members
 		members := segmentmembers.NewSegmentMembers(uint(completingSegment.Memtable.Size()))
 		members.Fill(completingSegment.Memtable.Iterate())
-		err = members.Save(o.dbDir, completingSegment.Segment.BloomFile)
+		err = members.Save(o.dbDir, completingSegment.Segment.MembersFile)
 		if err != nil {
-			log.Printf("failed to save bloom filter: %v", err)
+			log.Printf("failed to save segment members: %v", err)
 			return err
 		}
 	}

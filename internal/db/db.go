@@ -70,7 +70,7 @@ func OpenDatabase(dbDir string) (*Database, error) {
 	}
 
 	for _, segment := range db.segments {
-		members, err := segmentmembers.OpenSegmentMembers(dbDir, segment.BloomFile)
+		members, err := segmentmembers.OpenSegmentMembers(dbDir, segment.MembersFile)
 		if err != nil {
 			log.Printf("failed to open segment members: %v", err)
 			return nil, err
@@ -93,12 +93,12 @@ func getMergedSegmentFilename(a, b segments.SegmentId) storage.Filename {
 	return storage.Filename(fmt.Sprintf("segment-%d-%d", a, b))
 }
 
-func getBloomsFilename(id segments.SegmentId) storage.Filename {
-	return storage.Filename(fmt.Sprintf("bloom-%d", id))
+func getMembersFilename(id segments.SegmentId) storage.Filename {
+	return storage.Filename(fmt.Sprintf("members-%d", id))
 }
 
-func getMergedBloomsFilename(a, b segments.SegmentId) storage.Filename {
-	return storage.Filename(fmt.Sprintf("bloom-%d-%d", a, b))
+func getMergedMembersFilename(a, b segments.SegmentId) storage.Filename {
+	return storage.Filename(fmt.Sprintf("members-%d-%d", a, b))
 }
 
 func (db *Database) GetOnGoingSegment() *LiveSegment {
@@ -196,7 +196,7 @@ func (db *Database) SealCurrentSegment() (*LiveSegment, error) {
 	}
 
 	members, err := segmentmembers.OpenSegmentMembers(db.dbDir,
-		ongoingSegment.Segment.BloomFile)
+		ongoingSegment.Segment.MembersFile)
 	if err != nil {
 		log.Printf("failed to open segment members: %v", err)
 		return nil, err
@@ -225,7 +225,7 @@ func (db *Database) MergeSegments(a, b segments.SegmentId) error {
 	mergedSegment := segments.SegmentMetadata{
 		Id:          segmentB.Id,
 		SegmentFile: getMergedSegmentFilename(segmentA.Id, segmentB.Id),
-		BloomFile:   getMergedBloomsFilename(segmentA.Id, segmentB.Id),
+		MembersFile: getMergedMembersFilename(segmentA.Id, segmentB.Id),
 	}
 
 	op := segments.NewMergeSegmentsOperation(db.getNextOperationId(), db.dbDir, []segments.SegmentMetadata{segmentA, segmentB}, mergedSegment)
@@ -248,7 +248,7 @@ func (db *Database) MergeSegments(a, b segments.SegmentId) error {
 	db.segments[mergedSegment.Id] = mergedSegment
 
 	members, err := segmentmembers.OpenSegmentMembers(db.dbDir,
-		mergedSegment.BloomFile)
+		mergedSegment.MembersFile)
 	if err != nil {
 		log.Printf("failed to open segment members: %v", err)
 		return err

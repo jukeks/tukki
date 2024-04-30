@@ -7,5 +7,5 @@ type SegmentId uint64
 type SegmentMetadata struct {
 	Id          SegmentId
 	SegmentFile storage.Filename
-	BloomFile   storage.Filename
+	MembersFile storage.Filename
 }

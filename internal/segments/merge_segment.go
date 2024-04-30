@@ -69,7 +69,7 @@ func (o *MergeSegmentsOperation) CompletedJournalEntry() *segmentsv1.SegmentOper
 func getEstimatedElementCount(dbDir string, segments []SegmentMetadata) (uint, error) {
 	var size uint
 	for _, segment := range segments {
-		members, err := segmentmembers.OpenSegmentMembers(dbDir, segment.BloomFile)
+		members, err := segmentmembers.OpenSegmentMembers(dbDir, segment.MembersFile)
 		if err != nil {
 			return 0, err
 		}
@@ -116,7 +116,7 @@ func (o *MergeSegmentsOperation) Execute() error {
 		log.Printf("failed to merge sstables: %v", err)
 		return err
 	}
-	err = members.Save(o.dbDir, o.mergedSegment.BloomFile)
+	err = members.Save(o.dbDir, o.mergedSegment.MembersFile)
 	if err != nil {
 		log.Printf("failed to members: %v", err)
 		return err

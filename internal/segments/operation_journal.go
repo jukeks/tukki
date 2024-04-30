@@ -93,15 +93,15 @@ func pbToSegmentMetadata(segmentPb *segmentsv1.Segment) *SegmentMetadata {
 	return &SegmentMetadata{
 		Id:          SegmentId(segmentPb.Id),
 		SegmentFile: storage.Filename(segmentPb.Filename),
-		BloomFile:   storage.Filename(segmentPb.BloomFilename),
+		MembersFile: storage.Filename(segmentPb.MembersFilename),
 	}
 }
 
 func segmentMetadataToPb(segment *SegmentMetadata) *segmentsv1.Segment {
 	return &segmentsv1.Segment{
-		Id:            uint64(segment.Id),
-		Filename:      string(segment.SegmentFile),
-		BloomFilename: string(segment.BloomFile),
+		Id:              uint64(segment.Id),
+		Filename:        string(segment.SegmentFile),
+		MembersFilename: string(segment.MembersFile),
 	}
 }
 
