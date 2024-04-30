@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/jukeks/tukki/internal/segmentmembers"
 	"github.com/jukeks/tukki/internal/segments"
 	"github.com/jukeks/tukki/internal/storage"
 )
@@ -13,6 +14,7 @@ type Database struct {
 	operationJournal *segments.SegmentOperationJournal
 
 	segments   map[segments.SegmentId]segments.SegmentMetadata
+	members    map[segments.SegmentId]*segmentmembers.SegmentMembers
 	operations map[segments.OperationId]segments.SegmentOperation
 
 	ongoing *LiveSegment
@@ -47,6 +49,7 @@ func OpenDatabase(dbDir string) (*Database, error) {
 		dbDir:            dbDir,
 		operationJournal: operationJournal,
 		segments:         currentSegments.Segments,
+		members:          make(map[segments.SegmentId]*segmentmembers.SegmentMembers),
 		operations:       currentSegments.Operations,
 		ongoing:          ongoing,
 		walSizeLimit:     2 * 1024 * 1024,
@@ -64,6 +67,15 @@ func OpenDatabase(dbDir string) (*Database, error) {
 	if err != nil {
 		log.Printf("failed to open wal: %v", err)
 		return nil, err
+	}
+
+	for _, segment := range db.segments {
+		members, err := segmentmembers.OpenSegmentMembers(dbDir, segment.BloomFile)
+		if err != nil {
+			log.Printf("failed to open segment members: %v", err)
+			return nil, err
+		}
+		db.members[segment.Id] = members
 	}
 
 	return db, nil
@@ -183,6 +195,14 @@ func (db *Database) SealCurrentSegment() (*LiveSegment, error) {
 		return nil, err
 	}
 
+	members, err := segmentmembers.OpenSegmentMembers(db.dbDir,
+		ongoingSegment.Segment.BloomFile)
+	if err != nil {
+		log.Printf("failed to open segment members: %v", err)
+		return nil, err
+	}
+	db.members[ongoingSegment.Segment.Id] = members
+
 	completedEntry := op.CompletedJournalEntry()
 	err = db.operationJournal.Write(completedEntry)
 	if err != nil {
@@ -226,6 +246,16 @@ func (db *Database) MergeSegments(a, b segments.SegmentId) error {
 	delete(db.segments, a)
 	delete(db.segments, b)
 	db.segments[mergedSegment.Id] = mergedSegment
+
+	members, err := segmentmembers.OpenSegmentMembers(db.dbDir,
+		mergedSegment.BloomFile)
+	if err != nil {
+		log.Printf("failed to open segment members: %v", err)
+		return err
+	}
+	delete(db.members, a)
+	delete(db.members, b)
+	db.members[mergedSegment.Id] = members
 
 	completedEntry := op.CompletedJournalEntry()
 	err = db.operationJournal.Write(completedEntry)
