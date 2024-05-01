@@ -14,9 +14,8 @@ import (
 )
 
 func TestJournalWriter(t *testing.T) {
-	f := testutil.CreateTempFile("test-tukki", "")
+	f := testutil.CreateTempFile(t.TempDir(), "")
 	defer f.Close()
-	defer os.Remove(f.Name())
 
 	journalWriter := NewJournalWriter(f, WriteModeSync)
 	err := journalWriter.Write(&walv1.WalEntry{

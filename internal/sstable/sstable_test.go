@@ -22,9 +22,9 @@ func TestSSTable(t *testing.T) {
 		mt.Insert(keys[i], values[i])
 	}
 
-	f := testutil.CreateTempFile("test-tukki", "sstable-test-*")
+	tmpDir := t.TempDir()
+	f := testutil.CreateTempFile(tmpDir, "sstable-test-*")
 	tmpfile := f.Name()
-	defer os.Remove(tmpfile)
 
 	sstw := sstable.NewSSTableWriter(f)
 	err := sstw.WriteFromIterator(mt.Iterate())
