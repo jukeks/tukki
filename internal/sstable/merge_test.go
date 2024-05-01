@@ -92,9 +92,7 @@ func checkMemtableAreEqual(mt1, mt2 memtable.Memtable, expectedLen int) bool {
 }
 
 func testMerge(t *testing.T, table1Len, table2Len int) {
-	dbDir, cleanup := testutil.EnsureTempDirectory()
-	defer cleanup()
-
+	dbDir := t.TempDir()
 	filename1 := createSSTable(dbDir, table1Len)
 	defer os.Remove(filename1)
 	filename2 := createSSTable(dbDir, table2Len)

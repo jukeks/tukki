@@ -55,9 +55,7 @@ func TestJournalWriter(t *testing.T) {
 }
 
 func TestOpenJournal(t *testing.T) {
-	dbDir, cleanup := testutil.EnsureTempDirectory()
-	defer cleanup()
-
+	dbDir := t.TempDir()
 	filename := storage.Filename(randstr.String(10))
 
 	j, err := OpenJournal(dbDir, filename, WriteModeSync, func(r *JournalReader) error {

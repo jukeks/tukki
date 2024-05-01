@@ -5,14 +5,11 @@ import (
 
 	"github.com/jukeks/tukki/internal/storage"
 	walv1 "github.com/jukeks/tukki/proto/gen/tukki/storage/wal/v1"
-	testutil "github.com/jukeks/tukki/testutil"
 	"github.com/thanhpk/randstr"
 )
 
 func BenchmarkSyncWriter(b *testing.B) {
-	dbDir, cleanup := testutil.EnsureTempDirectory()
-	defer cleanup()
-
+	dbDir := b.TempDir()
 	filename := storage.Filename("journal")
 	j, err := OpenJournal(dbDir, filename, WriteModeSync, func(r *JournalReader) error {
 		return nil
@@ -42,9 +39,7 @@ func BenchmarkSyncWriter(b *testing.B) {
 }
 
 func BenchmarkAsyncWriter(b *testing.B) {
-	dbDir, cleanup := testutil.EnsureTempDirectory()
-	defer cleanup()
-
+	dbDir := b.TempDir()
 	filename := storage.Filename("journal")
 	j, err := OpenJournal(dbDir, filename, WriteModeAsync, func(r *JournalReader) error {
 		return nil

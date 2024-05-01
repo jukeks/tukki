@@ -5,13 +5,10 @@ import (
 
 	"github.com/jukeks/tukki/internal/memtable"
 	"github.com/jukeks/tukki/internal/storage"
-	testutil "github.com/jukeks/tukki/testutil"
 )
 
 func TestWal(t *testing.T) {
-	dbDir, cleanup := testutil.EnsureTempDirectory()
-	defer cleanup()
-
+	dbDir := t.TempDir()
 	filename := storage.Filename("wal")
 	mt := memtable.NewMemtable()
 	wal, err := memtable.OpenWal(dbDir, filename, mt)

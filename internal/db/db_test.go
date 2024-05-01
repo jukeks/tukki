@@ -3,14 +3,11 @@ package db
 import (
 	"testing"
 
-	testutil "github.com/jukeks/tukki/testutil"
 	"github.com/thanhpk/randstr"
 )
 
 func TestDB(t *testing.T) {
-	dbDir, cleanup := testutil.EnsureTempDirectory()
-	defer cleanup()
-
+	dbDir := t.TempDir()
 	database, err := OpenDatabase(dbDir)
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
@@ -49,10 +46,7 @@ func TestDB(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	dbDir, cleanup := testutil.EnsureTempDirectory()
-	defer cleanup()
-
-	database, err := OpenDatabase(dbDir)
+	database, err := OpenDatabase(t.TempDir())
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -81,15 +75,13 @@ func TestDelete(t *testing.T) {
 }
 
 func TestSegmentManager(t *testing.T) {
-	dbDir, cleanup := testutil.EnsureTempDirectory()
-	defer cleanup()
-
-	sm, err := OpenDatabase(dbDir)
+	dbDir := t.TempDir()
+	db, err := OpenDatabase(dbDir)
 	if err != nil {
 		t.Fatalf("failed to open segment manager: %v", err)
 	}
 
-	ongoing := sm.GetOnGoingSegment()
+	ongoing := db.GetOnGoingSegment()
 	if ongoing.Segment.Id != 0 {
 		t.Fatalf("expected ongoing segment id to be 0, got %d", ongoing.Segment.Id)
 	}
@@ -98,22 +90,22 @@ func TestSegmentManager(t *testing.T) {
 		t.Fatalf("expected ongoing segment journal filename to be 'wal-0.journal', got '%s'", ongoing.WalFilename)
 	}
 
-	if len(sm.segments) != 0 {
-		t.Fatalf("expected segments map to be empty, got %v", sm.segments)
+	if len(db.segments) != 0 {
+		t.Fatalf("expected segments map to be empty, got %v", db.segments)
 	}
 
-	if len(sm.operations) != 0 {
-		t.Fatalf("expected operations map to be empty, got %v", sm.operations)
+	if len(db.operations) != 0 {
+		t.Fatalf("expected operations map to be empty, got %v", db.operations)
 	}
 
 	writeLiveSegment(t, ongoing, "key1", "value1")
-	nextSegment, err := sm.SealCurrentSegment()
+	nextSegment, err := db.SealCurrentSegment()
 	if err != nil {
 		t.Fatalf("failed to seal current segment: %v", err)
 	}
 
-	if len(sm.segments) != 1 {
-		t.Fatalf("expected segments map to have 1 element, got %v", sm.segments)
+	if len(db.segments) != 1 {
+		t.Fatalf("expected segments map to have 1 element, got %v", db.segments)
 	}
 
 	ongoing = nextSegment
@@ -124,21 +116,21 @@ func TestSegmentManager(t *testing.T) {
 		t.Fatalf("expected ongoing segment journal filename to be 'wal-1.journal', got '%s'", ongoing.WalFilename)
 	}
 
-	err = sm.Close()
+	err = db.Close()
 	if err != nil {
 		t.Fatalf("failed to close segment manager: %v", err)
 	}
 
-	sm, err = OpenDatabase(dbDir)
+	db, err = OpenDatabase(dbDir)
 	if err != nil {
 		t.Fatalf("failed to open segment manager again: %v", err)
 	}
 
-	if len(sm.segments) != 1 {
-		t.Fatalf("expected segments map to have 1 element, got %v", sm.segments)
+	if len(db.segments) != 1 {
+		t.Fatalf("expected segments map to have 1 element, got %v", db.segments)
 	}
 
-	ongoing = sm.GetOnGoingSegment()
+	ongoing = db.GetOnGoingSegment()
 	if ongoing.Segment.Id != 1 {
 		t.Fatalf("expected ongoing segment id to be 1, got %d", ongoing.Segment.Id)
 	}
@@ -156,22 +148,20 @@ func writeLiveSegment(t *testing.T, liveSegment *LiveSegment, key, value string)
 }
 
 func TestMergeSegments(t *testing.T) {
-	dbDir, cleanup := testutil.EnsureTempDirectory()
-	defer cleanup()
-
-	sm, err := OpenDatabase(dbDir)
+	dbDir := t.TempDir()
+	db, err := OpenDatabase(dbDir)
 	if err != nil {
 		t.Fatalf("failed to open segment manager: %v", err)
 	}
 
-	ongoing := sm.GetOnGoingSegment()
+	ongoing := db.GetOnGoingSegment()
 	writeLiveSegment(t, ongoing, "key1", "value1")
 	writeLiveSegment(t, ongoing, "key2", "value2")
 	if err := ongoing.Close(); err != nil {
 		t.Fatalf("failed to close ongoing segment: %v", err)
 	}
 
-	nextSegment, err := sm.SealCurrentSegment()
+	nextSegment, err := db.SealCurrentSegment()
 	if err != nil {
 		t.Fatalf("failed to seal current segment: %v", err)
 	}
@@ -191,13 +181,13 @@ func TestMergeSegments(t *testing.T) {
 		t.Fatalf("failed to close ongoing segment: %v", err)
 	}
 
-	nextSegment, err = sm.SealCurrentSegment()
+	nextSegment, err = db.SealCurrentSegment()
 	if err != nil {
 		t.Fatalf("failed to seal current segment: %v", err)
 	}
 
-	if len(sm.segments) != 2 {
-		t.Fatalf("expected segments map to have 2 element, got %v", sm.segments)
+	if len(db.segments) != 2 {
+		t.Fatalf("expected segments map to have 2 element, got %v", db.segments)
 	}
 
 	ongoing = nextSegment
@@ -205,34 +195,32 @@ func TestMergeSegments(t *testing.T) {
 		t.Fatalf("expected ongoing segment id to be 2, got %d", ongoing.Segment.Id)
 	}
 
-	err = sm.MergeSegments(0, 1)
+	err = db.MergeSegments(0, 1)
 	if err != nil {
 		t.Fatalf("failed to merge segments: %v", err)
 	}
 
-	if len(sm.segments) != 1 {
-		t.Fatalf("expected segments map to have 1 element, got %v", sm.segments)
+	if len(db.segments) != 1 {
+		t.Fatalf("expected segments map to have 1 element, got %v", db.segments)
 	}
 
-	err = sm.Close()
+	err = db.Close()
 	if err != nil {
 		t.Fatalf("failed to close segment manager: %v", err)
 	}
 
-	sm, err = OpenDatabase(dbDir)
+	db, err = OpenDatabase(dbDir)
 	if err != nil {
 		t.Fatalf("failed to open segment manager again: %v", err)
 	}
 
-	if len(sm.segments) != 1 {
-		t.Fatalf("expected segments map to have 1 element, got %v", sm.segments)
+	if len(db.segments) != 1 {
+		t.Fatalf("expected segments map to have 1 element, got %v", db.segments)
 	}
 }
 
 func TestSegmentRotated(t *testing.T) {
-	dbDir, cleanup := testutil.EnsureTempDirectory()
-	defer cleanup()
-
+	dbDir := t.TempDir()
 	db, err := OpenDatabase(dbDir)
 	if err != nil {
 		t.Fatalf("failed to open segment manager: %v", err)
@@ -267,14 +255,13 @@ func TestSegmentRotated(t *testing.T) {
 }
 
 func BenchmarkWrite(b *testing.B) {
-	dbDir, cleanup := testutil.EnsureTempDirectory()
-	database, err := OpenDatabase(dbDir)
+	dbDir := b.TempDir()
+	db, err := OpenDatabase(dbDir)
 	if err != nil {
 		b.Fatalf("failed to open database: %v", err)
 	}
 	b.Cleanup(func() {
-		database.Close()
-		cleanup()
+		db.Close()
 	})
 
 	b.ResetTimer()
@@ -284,6 +271,6 @@ func BenchmarkWrite(b *testing.B) {
 		key := randstr.String(10)
 		value := randstr.String(16 * 1024)
 		b.StartTimer()
-		database.Set(key, value)
+		db.Set(key, value)
 	}
 }
