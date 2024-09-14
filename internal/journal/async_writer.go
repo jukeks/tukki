@@ -29,7 +29,7 @@ type writeMessage struct {
 func NewAsynchronousJournalWriter(w WriteSyncer) *AsynchronousJournalWriter {
 	writer := &AsynchronousJournalWriter{
 		w:         w,
-		b:         bufio.NewWriter(w),
+		b:         bufio.NewWriterSize(w, 128*1024),
 		writeBuff: make(chan writeMessage, 1000),
 		errors:    make(chan error, 1),
 		closed:    make(chan bool, 1),
