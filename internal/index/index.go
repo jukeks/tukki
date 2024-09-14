@@ -3,6 +3,7 @@ package index
 import (
 	"bufio"
 	"io"
+	"os"
 
 	"github.com/jukeks/tukki/internal/sstable"
 	"github.com/jukeks/tukki/internal/storage"
@@ -13,13 +14,19 @@ type Index struct {
 	Entries map[string]uint64
 }
 
-func OpenIndex(reader io.Reader) (*Index, error) {
-	br := bufio.NewReader(reader)
+func OpenIndex(dbDir string, filename storage.Filename) (*Index, error) {
+	path := storage.GetPath(dbDir, filename)
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	reader := bufio.NewReader(f)
 
 	entries := make(map[string]uint64)
 	for {
 		var record indexv1.IndexEntry
-		err := storage.ReadLengthPrefixedProtobufMessage(br, &record)
+		err := storage.ReadLengthPrefixedProtobufMessage(reader, &record)
 		if err != nil {
 			if err == io.EOF {
 				break

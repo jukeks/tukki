@@ -81,3 +81,32 @@ func (i *SSTableReader) Next() (keyvalue.IteratorEntry, error) {
 		Deleted: record.Deleted,
 	}, nil
 }
+
+type SSTableSeeker struct {
+	reader io.ReadSeeker
+}
+
+func NewSSTableSeeker(reader io.ReadSeeker) *SSTableSeeker {
+	return &SSTableSeeker{
+		reader: reader,
+	}
+}
+
+func (r *SSTableSeeker) ReadAt(offset uint64) (keyvalue.IteratorEntry, error) {
+	_, err := r.reader.Seek(int64(offset), io.SeekStart)
+	if err != nil {
+		return keyvalue.IteratorEntry{}, err
+	}
+
+	var record sstablev1.SSTableRecord
+	err = storage.ReadLengthPrefixedProtobufMessage(r.reader, &record)
+	if err != nil {
+		return keyvalue.IteratorEntry{}, err
+	}
+
+	return keyvalue.IteratorEntry{
+		Key:     record.Key,
+		Value:   record.Value,
+		Deleted: record.Deleted,
+	}, nil
+}

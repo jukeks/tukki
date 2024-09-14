@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/jukeks/tukki/internal/index"
 	"github.com/jukeks/tukki/internal/segmentmembers"
 	"github.com/jukeks/tukki/internal/segments"
 	"github.com/jukeks/tukki/internal/storage"
@@ -15,6 +16,7 @@ type Database struct {
 
 	segments   map[segments.SegmentId]segments.SegmentMetadata
 	members    map[segments.SegmentId]*segmentmembers.SegmentMembers
+	indexes    map[segments.SegmentId]*index.Index
 	operations map[segments.OperationId]segments.SegmentOperation
 
 	ongoing *LiveSegment
@@ -50,6 +52,7 @@ func OpenDatabase(dbDir string) (*Database, error) {
 		operationJournal: operationJournal,
 		segments:         currentSegments.Segments,
 		members:          make(map[segments.SegmentId]*segmentmembers.SegmentMembers),
+		indexes:          make(map[segments.SegmentId]*index.Index),
 		operations:       currentSegments.Operations,
 		ongoing:          ongoing,
 		walSizeLimit:     2 * 1024 * 1024,
@@ -76,6 +79,15 @@ func OpenDatabase(dbDir string) (*Database, error) {
 			return nil, err
 		}
 		db.members[segment.Id] = members
+	}
+
+	for _, segment := range db.segments {
+		idx, err := index.OpenIndex(dbDir, segment.IndexFile)
+		if err != nil {
+			log.Printf("failed to open index: %v", err)
+			return nil, err
+		}
+		db.indexes[segment.Id] = idx
 	}
 
 	return db, nil
@@ -210,6 +222,13 @@ func (db *Database) SealCurrentSegment() (*LiveSegment, error) {
 		return nil, err
 	}
 	db.members[ongoingSegment.Segment.Id] = members
+
+	index, err := index.OpenIndex(db.dbDir, ongoingSegment.Segment.IndexFile)
+	if err != nil {
+		log.Printf("failed to open index: %v", err)
+		return nil, err
+	}
+	db.indexes[ongoingSegment.Segment.Id] = index
 
 	completedEntry := op.CompletedJournalEntry()
 	err = db.operationJournal.Write(completedEntry)
