@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"os"
 	"sort"
 
 	"github.com/jukeks/tukki/internal/segments"
@@ -39,8 +38,7 @@ func (db *Database) getFromSegments(key string) (string, error) {
 			continue
 		}
 
-		segmentPath := storage.GetPath(db.dbDir, segment.SegmentFile)
-		segmentFile, err := os.Open(segmentPath)
+		segmentFile, err := storage.OpenFile(db.dbDir, segment.SegmentFile)
 		if err != nil {
 			return "", err
 		}

@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 
 	"google.golang.org/protobuf/proto"
@@ -66,4 +67,14 @@ func GetPath(dbDir string, filename Filename) string {
 	}
 
 	return filepath.Join(dbDir, string(filename))
+}
+
+func OpenFile(dbDir string, filename Filename) (*os.File, error) {
+	path := GetPath(dbDir, filename)
+	return os.Open(path)
+}
+
+func CreateFile(dbDir string, filename Filename) (*os.File, error) {
+	path := GetPath(dbDir, filename)
+	return os.Create(path)
 }

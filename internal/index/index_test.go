@@ -1,7 +1,6 @@
 package index
 
 import (
-	"os"
 	"testing"
 
 	"github.com/jukeks/tukki/internal/sstable"
@@ -18,8 +17,7 @@ func TestIndex(t *testing.T) {
 	entries["key2"] = 1
 	entries["key3"] = 2
 
-	path := storage.GetPath(dbDir, filename)
-	f, err := os.Create(path)
+	f, err := storage.CreateFile(dbDir, filename)
 	if err != nil {
 		t.Fatal(err)
 	}
