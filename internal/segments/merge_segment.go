@@ -1,7 +1,7 @@
 package segments
 
 import (
-	"log"
+	"fmt"
 	"os"
 
 	"github.com/jukeks/tukki/internal/index"
@@ -83,15 +83,13 @@ func (o *MergeSegmentsOperation) Execute() error {
 	mergedPath := storage.GetPath(o.dbDir, o.mergedSegment.SegmentFile)
 	mergedFile, err := os.Create(mergedPath)
 	if err != nil {
-		log.Printf("failed to create file: %v", err)
-		return err
+		return fmt.Errorf("failed to create merged segment file: %w", err)
 	}
 
 	aPath := storage.GetPath(o.dbDir, o.segmentsToMerge[0].SegmentFile)
 	aFile, err := os.Open(aPath)
 	if err != nil {
-		log.Printf("failed to open file: %v", err)
-		return err
+		return fmt.Errorf("failed to open a segment file: %w", err)
 	}
 	defer aFile.Close()
 	aReader := sstable.NewSSTableReader(aFile)
@@ -99,45 +97,38 @@ func (o *MergeSegmentsOperation) Execute() error {
 	bPath := storage.GetPath(o.dbDir, o.segmentsToMerge[1].SegmentFile)
 	bFile, err := os.Open(bPath)
 	if err != nil {
-		log.Printf("failed to open file: %v", err)
-		return err
+		return fmt.Errorf("failed to open b segment file: %w", err)
 	}
 	defer bFile.Close()
 	bReader := sstable.NewSSTableReader(bFile)
 
 	totalMembers, err := getEstimatedElementCount(o.dbDir, o.segmentsToMerge)
 	if err != nil {
-		log.Printf("failed to get estimated element count: %v", err)
-		return err
+		return fmt.Errorf("failed to get estimated element count: %w", err)
 	}
 	members := segmentmembers.NewSegmentMembers(totalMembers)
 
 	indexPath := storage.GetPath(o.dbDir, o.mergedSegment.IndexFile)
 	indexFile, err := os.Create(indexPath)
 	if err != nil {
-		log.Printf("failed to create file: %v", err)
-		return err
+		return fmt.Errorf("failed to create index file: %w", err)
 	}
 	indexWriter := index.NewIndexWriter(indexFile)
 
 	offsets, err := sstable.MergeSSTables(mergedFile, aReader, bReader, members)
 	if err != nil {
-		log.Printf("failed to merge sstables: %v", err)
-		return err
+		return fmt.Errorf("failed to merge sstables: %w", err)
 	}
 	err = members.Save(o.dbDir, o.mergedSegment.MembersFile)
 	if err != nil {
-		log.Printf("failed to members: %v", err)
-		return err
+		return fmt.Errorf("failed to save members: %w", err)
 	}
 	if err := indexWriter.WriteFromOffsets(offsets); err != nil {
-		log.Printf("failed to write index: %v", err)
-		return err
+		return fmt.Errorf("failed to write index: %w", err)
 	}
 	err = indexWriter.Close()
 	if err != nil {
-		log.Printf("failed to close index writer: %v", err)
-		return err
+		return fmt.Errorf("failed to close index writer: %w", err)
 	}
 
 	return mergedFile.Close()
