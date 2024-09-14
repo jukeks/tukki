@@ -102,7 +102,7 @@ messagesAvailable:
 				break messagesAvailable
 			}
 
-			err := storage.WriteLengthPrefixedProtobufMessage(j.b, msg.Message)
+			_, err := storage.WriteLengthPrefixedProtobufMessage(j.b, msg.Message)
 			if err != nil {
 				fmt.Printf("failed to write journal entry: %v\n", err)
 				return err

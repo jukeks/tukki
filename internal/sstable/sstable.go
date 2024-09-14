@@ -26,7 +26,8 @@ func (w *SSTableWriter) Write(entry keyvalue.IteratorEntry) error {
 		Value:   entry.Value,
 		Deleted: entry.Deleted,
 	}
-	return storage.WriteLengthPrefixedProtobufMessage(w.writer, &record)
+	_, err := storage.WriteLengthPrefixedProtobufMessage(w.writer, &record)
+	return err
 }
 
 func (w *SSTableWriter) WriteFromIterator(iterator keyvalue.KeyValueIterator) error {

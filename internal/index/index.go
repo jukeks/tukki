@@ -57,7 +57,7 @@ func (w *IndexWriter) Close() error {
 			Key:    key,
 			Offset: offset,
 		}
-		err := storage.WriteLengthPrefixedProtobufMessage(w.writer, &record)
+		_, err := storage.WriteLengthPrefixedProtobufMessage(w.writer, &record)
 		if err != nil {
 			return err
 		}

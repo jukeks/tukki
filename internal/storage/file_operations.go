@@ -10,23 +10,24 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
-func WriteLengthPrefixedProtobufMessage(writer io.Writer, message protoreflect.ProtoMessage) error {
+func WriteLengthPrefixedProtobufMessage(writer io.Writer, message protoreflect.ProtoMessage) (uint32, error) {
 	payload, err := proto.Marshal(message)
 	if err != nil {
-		return fmt.Errorf("failed to serialize key value: %w", err)
+		return 0, fmt.Errorf("failed to serialize key value: %w", err)
 	}
 
+	payloadLen := uint32(len(payload))
 	err = binary.Write(writer, binary.LittleEndian, uint32(len(payload)))
 	if err != nil {
-		return fmt.Errorf("failed to write payload len: %w", err)
+		return 0, fmt.Errorf("failed to write payload len: %w", err)
 	}
 
 	_, err = writer.Write(payload)
 	if err != nil {
-		return fmt.Errorf("failed to write payload: %w", err)
+		return 0, fmt.Errorf("failed to write payload: %w", err)
 	}
 
-	return nil
+	return 4 + payloadLen, nil // 4 bytes for the length prefix
 }
 
 func ReadLengthPrefixedProtobufMessage(reader io.Reader, message protoreflect.ProtoMessage) error {

@@ -14,7 +14,7 @@ type SynchronousJournalWriter struct {
 }
 
 func (j *SynchronousJournalWriter) Write(journalEntry protoreflect.ProtoMessage) error {
-	err := storage.WriteLengthPrefixedProtobufMessage(j.b, journalEntry)
+	_, err := storage.WriteLengthPrefixedProtobufMessage(j.b, journalEntry)
 	if err != nil {
 		return fmt.Errorf("failed to write journal entry: %w", err)
 	}
