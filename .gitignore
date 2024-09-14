@@ -24,3 +24,5 @@ go.work
 coverage.html
 
 /bin
+
+.DS_Store
