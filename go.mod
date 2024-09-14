@@ -9,7 +9,10 @@ require (
 	google.golang.org/protobuf v1.33.0
 )
 
-require github.com/bits-and-blooms/bitset v1.10.0 // indirect
+require (
+	github.com/bits-and-blooms/bitset v1.10.0 // indirect
+	github.com/jamiealquiza/tachymeter v2.0.0+incompatible // indirect
+)
 
 require (
 	github.com/bits-and-blooms/bloom/v3 v3.7.0

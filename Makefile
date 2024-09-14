@@ -13,6 +13,7 @@ test:
 build:
 	go build -v -o ./bin/server ./cmd/server
 	go build -v -o ./bin/client ./cmd/client
+	go build -v -o ./bin/test/csvdumper ./cmd/test/csvdumper
 
 format:
 	go fmt ./...
