@@ -2,6 +2,7 @@ package db
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"sort"
@@ -26,6 +27,15 @@ func (db *Database) getFromSegments(key string) (string, error) {
 	for _, segment := range db.getSegmentsSorted() {
 		contains := db.members[segment.Id].Contains(key)
 		if !contains {
+			// this looks unnecessary right now, but eventually all segment
+			// indexes might not be in memory, so it's beneficial to check
+			// if the key is in the segment before reading the index
+			continue
+		}
+
+		offset, found := db.indexes[segment.Id].Entries[key]
+		if !found {
+			// false positive, key is not in segment
 			continue
 		}
 
@@ -36,19 +46,21 @@ func (db *Database) getFromSegments(key string) (string, error) {
 		}
 		defer segmentFile.Close()
 
-		reader := sstable.NewSSTableReader(segmentFile)
-		for entry, err := reader.Next(); err == nil; entry, err = reader.Next() {
-			if entry.Key > key {
-				break
-			}
-
-			if entry.Key == key {
-				if entry.Deleted {
-					return "", ErrKeyNotFound
-				}
-				return entry.Value, nil
-			}
+		reader := sstable.NewSSTableSeeker(segmentFile)
+		entry, err := reader.ReadAt(offset)
+		if err != nil {
+			return "", err
 		}
+
+		if entry.Key != key {
+			return "", fmt.Errorf("expected key %s, got %s", key, entry.Key)
+		}
+
+		if entry.Deleted {
+			return "", ErrKeyNotFound
+		}
+
+		return entry.Value, nil
 	}
 
 	return "", ErrKeyNotFound

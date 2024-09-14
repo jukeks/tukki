@@ -4,35 +4,38 @@ import (
 	"os"
 	"testing"
 
-	"github.com/jukeks/tukki/testutil"
+	"github.com/jukeks/tukki/internal/sstable"
+	"github.com/jukeks/tukki/internal/storage"
+	"github.com/thanhpk/randstr"
 )
 
 func TestIndex(t *testing.T) {
-	tmpDir := t.TempDir()
-	f := testutil.CreateTempFile(tmpDir, "sstable-test-*")
+	dbDir := t.TempDir()
+	filename := storage.Filename(randstr.String(10))
 
-	entries := make(map[string]int64)
+	entries := make(sstable.KeyMap)
 	entries["key1"] = 0
 	entries["key2"] = 1
 	entries["key3"] = 2
 
+	path := storage.GetPath(dbDir, filename)
+	f, err := os.Create(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	w := NewIndexWriter(f)
-	for key, offset := range entries {
-		if err := w.Add(key, offset); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	err := w.Close()
+	err = w.WriteFromOffsets(entries)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	f, err = os.Open(f.Name())
+	err = w.Close()
 	if err != nil {
 		t.Fatal(err)
 	}
-	index, err := OpenIndex(f)
+
+	index, err := OpenIndex(dbDir, filename)
 	if err != nil {
 		t.Fatal(err)
 	}

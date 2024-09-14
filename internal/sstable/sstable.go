@@ -12,32 +12,38 @@ import (
 
 type SSTableWriter struct {
 	writer io.Writer
+	keyMap KeyMap
 }
+
+type KeyMap map[string]uint64
 
 func NewSSTableWriter(writer io.Writer) *SSTableWriter {
 	return &SSTableWriter{
 		writer: writer,
+		keyMap: make(KeyMap),
 	}
 }
 
-func (w *SSTableWriter) Write(entry keyvalue.IteratorEntry) error {
+func (w *SSTableWriter) Write(entry keyvalue.IteratorEntry) (uint32, error) {
 	record := sstablev1.SSTableRecord{
 		Key:     entry.Key,
 		Value:   entry.Value,
 		Deleted: entry.Deleted,
 	}
-	_, err := storage.WriteLengthPrefixedProtobufMessage(w.writer, &record)
-	return err
+	return storage.WriteLengthPrefixedProtobufMessage(w.writer, &record)
 }
 
 func (w *SSTableWriter) WriteFromIterator(iterator keyvalue.KeyValueIterator) error {
 	writer := bufio.NewWriter(w.writer)
 
+	var offset uint64 = 0
 	for entry, err := iterator.Next(); err == nil; entry, err = iterator.Next() {
-		err := w.Write(entry)
+		len, err := w.Write(entry)
 		if err != nil {
 			return fmt.Errorf("failed to write entry: %w", err)
 		}
+		w.keyMap[entry.Key] = offset
+		offset += uint64(len)
 	}
 
 	err := writer.Flush()
@@ -46,6 +52,10 @@ func (w *SSTableWriter) WriteFromIterator(iterator keyvalue.KeyValueIterator) er
 	}
 
 	return nil
+}
+
+func (w *SSTableWriter) WrittenOffsets() KeyMap {
+	return w.keyMap
 }
 
 type SSTableReader struct {
@@ -61,6 +71,35 @@ func NewSSTableReader(reader io.Reader) *SSTableReader {
 func (i *SSTableReader) Next() (keyvalue.IteratorEntry, error) {
 	var record sstablev1.SSTableRecord
 	err := storage.ReadLengthPrefixedProtobufMessage(i.reader, &record)
+	if err != nil {
+		return keyvalue.IteratorEntry{}, err
+	}
+
+	return keyvalue.IteratorEntry{
+		Key:     record.Key,
+		Value:   record.Value,
+		Deleted: record.Deleted,
+	}, nil
+}
+
+type SSTableSeeker struct {
+	reader io.ReadSeeker
+}
+
+func NewSSTableSeeker(reader io.ReadSeeker) *SSTableSeeker {
+	return &SSTableSeeker{
+		reader: reader,
+	}
+}
+
+func (r *SSTableSeeker) ReadAt(offset uint64) (keyvalue.IteratorEntry, error) {
+	_, err := r.reader.Seek(int64(offset), io.SeekStart)
+	if err != nil {
+		return keyvalue.IteratorEntry{}, err
+	}
+
+	var record sstablev1.SSTableRecord
+	err = storage.ReadLengthPrefixedProtobufMessage(r.reader, &record)
 	if err != nil {
 		return keyvalue.IteratorEntry{}, err
 	}

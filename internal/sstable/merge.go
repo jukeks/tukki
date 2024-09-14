@@ -7,9 +7,10 @@ import (
 	"github.com/jukeks/tukki/internal/segmentmembers"
 )
 
-func MergeSSTables(w io.Writer, a, b keyvalue.KeyValueIterator,
-	members *segmentmembers.SegmentMembers) error {
-	writer := NewSSTableWriter(w)
+func MergeSSTables(sstableWriter io.Writer, a, b keyvalue.KeyValueIterator,
+	members *segmentmembers.SegmentMembers) (KeyMap, error) {
+
+	writer := NewSSTableWriter(sstableWriter)
 
 	entryA, errA := a.Next()
 	entryB, errB := b.Next()
@@ -18,10 +19,10 @@ func MergeSSTables(w io.Writer, a, b keyvalue.KeyValueIterator,
 			break
 		}
 		if errA != nil && errA != io.EOF {
-			return errA
+			return nil, errA
 		}
 		if errB != nil && errB != io.EOF {
-			return errB
+			return nil, errB
 		}
 
 		// a is completely read
@@ -65,5 +66,5 @@ func MergeSSTables(w io.Writer, a, b keyvalue.KeyValueIterator,
 		}
 	}
 
-	return nil
+	return writer.WrittenOffsets(), nil
 }

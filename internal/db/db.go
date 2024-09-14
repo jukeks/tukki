@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/jukeks/tukki/internal/index"
 	"github.com/jukeks/tukki/internal/segmentmembers"
 	"github.com/jukeks/tukki/internal/segments"
 	"github.com/jukeks/tukki/internal/storage"
@@ -15,6 +16,7 @@ type Database struct {
 
 	segments   map[segments.SegmentId]segments.SegmentMetadata
 	members    map[segments.SegmentId]*segmentmembers.SegmentMembers
+	indexes    map[segments.SegmentId]*index.Index
 	operations map[segments.OperationId]segments.SegmentOperation
 
 	ongoing *LiveSegment
@@ -50,6 +52,7 @@ func OpenDatabase(dbDir string) (*Database, error) {
 		operationJournal: operationJournal,
 		segments:         currentSegments.Segments,
 		members:          make(map[segments.SegmentId]*segmentmembers.SegmentMembers),
+		indexes:          make(map[segments.SegmentId]*index.Index),
 		operations:       currentSegments.Operations,
 		ongoing:          ongoing,
 		walSizeLimit:     2 * 1024 * 1024,
@@ -78,6 +81,15 @@ func OpenDatabase(dbDir string) (*Database, error) {
 		db.members[segment.Id] = members
 	}
 
+	for _, segment := range db.segments {
+		idx, err := index.OpenIndex(dbDir, segment.IndexFile)
+		if err != nil {
+			log.Printf("failed to open index: %v", err)
+			return nil, err
+		}
+		db.indexes[segment.Id] = idx
+	}
+
 	return db, nil
 }
 
@@ -99,6 +111,14 @@ func getMembersFilename(id segments.SegmentId) storage.Filename {
 
 func getMergedMembersFilename(a, b segments.SegmentId) storage.Filename {
 	return storage.Filename(fmt.Sprintf("members-%d-%d", a, b))
+}
+
+func getIndexFilename(id segments.SegmentId) storage.Filename {
+	return storage.Filename(fmt.Sprintf("index-%d", id))
+}
+
+func getMergedIndexFilename(a, b segments.SegmentId) storage.Filename {
+	return storage.Filename(fmt.Sprintf("index-%d-%d", a, b))
 }
 
 func (db *Database) GetOnGoingSegment() *LiveSegment {
@@ -203,6 +223,13 @@ func (db *Database) SealCurrentSegment() (*LiveSegment, error) {
 	}
 	db.members[ongoingSegment.Segment.Id] = members
 
+	index, err := index.OpenIndex(db.dbDir, ongoingSegment.Segment.IndexFile)
+	if err != nil {
+		log.Printf("failed to open index: %v", err)
+		return nil, err
+	}
+	db.indexes[ongoingSegment.Segment.Id] = index
+
 	completedEntry := op.CompletedJournalEntry()
 	err = db.operationJournal.Write(completedEntry)
 	if err != nil {
@@ -231,6 +258,7 @@ func (db *Database) MergeSegments(a, b segments.SegmentId) error {
 		Id:          segmentB.Id,
 		SegmentFile: getMergedSegmentFilename(segmentA.Id, segmentB.Id),
 		MembersFile: getMergedMembersFilename(segmentA.Id, segmentB.Id),
+		IndexFile:   getMergedIndexFilename(segmentA.Id, segmentB.Id),
 	}
 
 	op := segments.NewMergeSegmentsOperation(db.getNextOperationId(), db.dbDir, []segments.SegmentMetadata{segmentA, segmentB}, mergedSegment)
