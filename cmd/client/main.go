@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	kvv1 "github.com/jukeks/tukki/proto/gen/tukki/rpc/kv/v1"
 	"google.golang.org/grpc"
@@ -78,6 +79,7 @@ func repl(client kvv1.KvServiceClient) {
 
 		switch cmd.Cmd {
 		case "set":
+			start := time.Now()
 			_, err := client.Set(context.Background(), &kvv1.SetRequest{
 				Pair: &kvv1.KvPair{
 					Key:   cmd.Key,
@@ -88,20 +90,21 @@ func repl(client kvv1.KvServiceClient) {
 				fmt.Printf("failed to set: %v\n", err)
 				continue
 			}
-			fmt.Printf("Key set\n")
+			fmt.Printf("Key set (%v)\n", time.Since(start))
 		case "get":
+			start := time.Now()
 			resp, err := client.Query(context.Background(), &kvv1.QueryRequest{
 				Key: cmd.Key,
 			})
 			if err != nil {
-				fmt.Printf("failed to get: %v\n", err)
+				fmt.Printf("failed to get: %v (%v)\n", err, time.Since(start))
 				continue
 			}
 			if e := resp.GetError(); e != nil {
-				fmt.Printf("key not found: %s\n", e.Message)
+				fmt.Printf("key not found: %s (%v)\n", e.Message, time.Since(start))
 				continue
 			}
-			fmt.Printf("value: %s\n", resp.GetPair().Value)
+			fmt.Printf("value: %s (%v)\n", resp.GetPair().Value, time.Since(start))
 		case "delete":
 			_, err := client.Delete(context.Background(), &kvv1.DeleteRequest{
 				Key: cmd.Key,
