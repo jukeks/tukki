@@ -56,18 +56,19 @@ func NewIndexWriter(writer io.WriteCloser) *IndexWriter {
 }
 
 func (w *IndexWriter) WriteFromOffsets(offsets sstable.KeyMap) error {
+	bw := bufio.NewWriter(w.writer)
 	for key, offset := range offsets {
 		record := indexv1.IndexEntry{
 			Key:    key,
 			Offset: offset,
 		}
-		_, err := storage.WriteLengthPrefixedProtobufMessage(w.writer, &record)
+		_, err := storage.WriteLengthPrefixedProtobufMessage(bw, &record)
 		if err != nil {
 			return err
 		}
 	}
 
-	return nil
+	return bw.Flush()
 }
 
 func (w *IndexWriter) Close() error {

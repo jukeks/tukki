@@ -59,12 +59,12 @@ func (w *SSTableWriter) WrittenOffsets() KeyMap {
 }
 
 type SSTableReader struct {
-	reader io.Reader
+	reader *bufio.Reader
 }
 
 func NewSSTableReader(reader io.Reader) *SSTableReader {
 	return &SSTableReader{
-		reader: reader,
+		reader: bufio.NewReader(reader),
 	}
 }
 

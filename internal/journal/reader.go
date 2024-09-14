@@ -1,6 +1,7 @@
 package journal
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 
@@ -9,11 +10,11 @@ import (
 )
 
 type JournalReader struct {
-	r io.Reader
+	r *bufio.Reader
 }
 
 func NewJournalReader(r io.Reader) *JournalReader {
-	return &JournalReader{r: r}
+	return &JournalReader{r: bufio.NewReader(r)}
 }
 
 func (j *JournalReader) Read(journalEntry protoreflect.ProtoMessage) error {
