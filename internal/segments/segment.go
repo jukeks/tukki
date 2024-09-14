@@ -8,4 +8,5 @@ type SegmentMetadata struct {
 	Id          SegmentId
 	SegmentFile storage.Filename
 	MembersFile storage.Filename
+	IndexFile   storage.Filename
 }

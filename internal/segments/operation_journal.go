@@ -95,6 +95,7 @@ func pbToSegmentMetadata(segmentPb *segmentsv1.Segment) *SegmentMetadata {
 		Id:          SegmentId(segmentPb.Id),
 		SegmentFile: storage.Filename(segmentPb.Filename),
 		MembersFile: storage.Filename(segmentPb.MembersFilename),
+		IndexFile:   storage.Filename(segmentPb.IndexFilename),
 	}
 }
 
@@ -103,6 +104,7 @@ func segmentMetadataToPb(segment *SegmentMetadata) *segmentsv1.Segment {
 		Id:              uint64(segment.Id),
 		Filename:        string(segment.SegmentFile),
 		MembersFilename: string(segment.MembersFile),
+		IndexFilename:   string(segment.IndexFile),
 	}
 }
 

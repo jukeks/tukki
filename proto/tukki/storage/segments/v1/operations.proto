@@ -8,6 +8,7 @@ message Segment {
     uint64 id = 1;
     string filename = 2;
     string members_filename = 3;
+    string index_filename = 4;
 }
 
 message LiveSegment {
