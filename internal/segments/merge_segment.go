@@ -119,9 +119,8 @@ func (o *MergeSegmentsOperation) Execute() error {
 		return err
 	}
 	indexWriter := index.NewIndexWriter(indexFile)
-	// TODO USE INDEX WRITER
 
-	err = sstable.MergeSSTables(mergedFile, aReader, bReader, members)
+	offsets, err := sstable.MergeSSTables(mergedFile, aReader, bReader, members)
 	if err != nil {
 		log.Printf("failed to merge sstables: %v", err)
 		return err
@@ -129,6 +128,10 @@ func (o *MergeSegmentsOperation) Execute() error {
 	err = members.Save(o.dbDir, o.mergedSegment.MembersFile)
 	if err != nil {
 		log.Printf("failed to members: %v", err)
+		return err
+	}
+	if err := indexWriter.WriteFromOffsets(offsets); err != nil {
+		log.Printf("failed to write index: %v", err)
 		return err
 	}
 	err = indexWriter.Close()

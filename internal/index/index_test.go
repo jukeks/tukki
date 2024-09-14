@@ -4,6 +4,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/jukeks/tukki/internal/sstable"
 	"github.com/jukeks/tukki/testutil"
 )
 
@@ -11,19 +12,18 @@ func TestIndex(t *testing.T) {
 	tmpDir := t.TempDir()
 	f := testutil.CreateTempFile(tmpDir, "sstable-test-*")
 
-	entries := make(map[string]int64)
+	entries := make(sstable.KeyMap)
 	entries["key1"] = 0
 	entries["key2"] = 1
 	entries["key3"] = 2
 
 	w := NewIndexWriter(f)
-	for key, offset := range entries {
-		if err := w.Add(key, offset); err != nil {
-			t.Fatal(err)
-		}
+	err := w.WriteFromOffsets(entries)
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	err := w.Close()
+	err = w.Close()
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -98,7 +98,6 @@ func (o *AddSegmentOperation) Execute() error {
 			return fmt.Errorf("failed to create index file: %w", err)
 		}
 		indexWriter := index.NewIndexWriter(indexF)
-		// TODO USE INDEX WRITER
 
 		w := sstable.NewSSTableWriter(f)
 		err = w.WriteFromIterator(completingSegment.Memtable.Iterate())
@@ -111,6 +110,9 @@ func (o *AddSegmentOperation) Execute() error {
 			return fmt.Errorf("failed to close file: %w", err)
 		}
 
+		if err := indexWriter.WriteFromOffsets(w.WrittenOffsets()); err != nil {
+			return fmt.Errorf("failed to write index: %w", err)
+		}
 		if err := indexWriter.Close(); err != nil {
 			return fmt.Errorf("failed to close index file: %w", err)
 		}
