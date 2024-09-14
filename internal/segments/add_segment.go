@@ -1,9 +1,11 @@
 package segments
 
 import (
+	"fmt"
 	"log"
 	"os"
 
+	"github.com/jukeks/tukki/internal/index"
 	"github.com/jukeks/tukki/internal/memtable"
 	"github.com/jukeks/tukki/internal/segmentmembers"
 	"github.com/jukeks/tukki/internal/sstable"
@@ -90,17 +92,27 @@ func (o *AddSegmentOperation) Execute() error {
 			return err
 		}
 
+		indexPath := storage.GetPath(o.dbDir, completingSegment.Segment.IndexFile)
+		indexF, err := os.Create(indexPath)
+		if err != nil {
+			return fmt.Errorf("failed to create index file: %w", err)
+		}
+		indexWriter := index.NewIndexWriter(indexF)
+		// TODO USE INDEX WRITER
+
 		w := sstable.NewSSTableWriter(f)
 		err = w.WriteFromIterator(completingSegment.Memtable.Iterate())
 		if err != nil {
-			log.Printf("failed to write sstable from memtable: %v", err)
-			return err
+			return fmt.Errorf("failed to write sstable from memtable: %w", err)
 		}
 
 		err = f.Close()
 		if err != nil {
-			log.Printf("failed to close file: %v", err)
-			return err
+			return fmt.Errorf("failed to close file: %w", err)
+		}
+
+		if err := indexWriter.Close(); err != nil {
+			return fmt.Errorf("failed to close index file: %w", err)
 		}
 
 		// remove completing wal

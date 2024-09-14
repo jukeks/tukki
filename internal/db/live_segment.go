@@ -19,6 +19,7 @@ func NewLiveSegment(id segments.SegmentId) *LiveSegment {
 			Id:          id,
 			SegmentFile: getSegmentFilename(id),
 			MembersFile: getMembersFilename(id),
+			IndexFile:   getIndexFilename(id),
 		},
 		WalFilename: getWalFilename(id),
 	}

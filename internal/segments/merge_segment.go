@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/jukeks/tukki/internal/index"
 	"github.com/jukeks/tukki/internal/segmentmembers"
 	"github.com/jukeks/tukki/internal/sstable"
 	"github.com/jukeks/tukki/internal/storage"
@@ -111,6 +112,15 @@ func (o *MergeSegmentsOperation) Execute() error {
 	}
 	members := segmentmembers.NewSegmentMembers(totalMembers)
 
+	indexPath := storage.GetPath(o.dbDir, o.mergedSegment.IndexFile)
+	indexFile, err := os.Create(indexPath)
+	if err != nil {
+		log.Printf("failed to create file: %v", err)
+		return err
+	}
+	indexWriter := index.NewIndexWriter(indexFile)
+	// TODO USE INDEX WRITER
+
 	err = sstable.MergeSSTables(mergedFile, aReader, bReader, members)
 	if err != nil {
 		log.Printf("failed to merge sstables: %v", err)
@@ -119,6 +129,11 @@ func (o *MergeSegmentsOperation) Execute() error {
 	err = members.Save(o.dbDir, o.mergedSegment.MembersFile)
 	if err != nil {
 		log.Printf("failed to members: %v", err)
+		return err
+	}
+	err = indexWriter.Close()
+	if err != nil {
+		log.Printf("failed to close index writer: %v", err)
 		return err
 	}
 

@@ -7,9 +7,10 @@ import (
 	"github.com/jukeks/tukki/internal/segmentmembers"
 )
 
-func MergeSSTables(w io.Writer, a, b keyvalue.KeyValueIterator,
+func MergeSSTables(sstableWriter io.Writer, a, b keyvalue.KeyValueIterator,
 	members *segmentmembers.SegmentMembers) error {
-	writer := NewSSTableWriter(w)
+
+	writer := NewSSTableWriter(sstableWriter)
 
 	entryA, errA := a.Next()
 	entryB, errB := b.Next()

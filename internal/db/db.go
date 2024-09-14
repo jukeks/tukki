@@ -101,6 +101,14 @@ func getMergedMembersFilename(a, b segments.SegmentId) storage.Filename {
 	return storage.Filename(fmt.Sprintf("members-%d-%d", a, b))
 }
 
+func getIndexFilename(id segments.SegmentId) storage.Filename {
+	return storage.Filename(fmt.Sprintf("index-%d", id))
+}
+
+func getMergedIndexFilename(a, b segments.SegmentId) storage.Filename {
+	return storage.Filename(fmt.Sprintf("index-%d-%d", a, b))
+}
+
 func (db *Database) GetOnGoingSegment() *LiveSegment {
 	return db.ongoing
 }
@@ -231,6 +239,7 @@ func (db *Database) MergeSegments(a, b segments.SegmentId) error {
 		Id:          segmentB.Id,
 		SegmentFile: getMergedSegmentFilename(segmentA.Id, segmentB.Id),
 		MembersFile: getMergedMembersFilename(segmentA.Id, segmentB.Id),
+		IndexFile:   getMergedIndexFilename(segmentA.Id, segmentB.Id),
 	}
 
 	op := segments.NewMergeSegmentsOperation(db.getNextOperationId(), db.dbDir, []segments.SegmentMetadata{segmentA, segmentB}, mergedSegment)
