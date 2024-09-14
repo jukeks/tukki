@@ -39,19 +39,18 @@ func OpenSegmentMembers(dbDir string, filename storage.Filename) (*SegmentMember
 }
 
 func (sb *SegmentMembers) Save(dbDir string, filename storage.Filename) error {
-	path := storage.GetPath(dbDir, filename)
-	f, err := os.Create(path)
+	f, err := storage.CreateFile(dbDir, filename)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
 
 	_, err = sb.filter.WriteTo(f)
 	if err != nil {
+		f.Close()
 		return err
 	}
 
-	return nil
+	return f.Close()
 }
 
 func (sb *SegmentMembers) Add(key string) {

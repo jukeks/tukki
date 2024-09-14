@@ -3,7 +3,6 @@ package index
 import (
 	"bufio"
 	"io"
-	"os"
 
 	"github.com/jukeks/tukki/internal/sstable"
 	"github.com/jukeks/tukki/internal/storage"
@@ -15,8 +14,7 @@ type Index struct {
 }
 
 func OpenIndex(dbDir string, filename storage.Filename) (*Index, error) {
-	path := storage.GetPath(dbDir, filename)
-	f, err := os.Open(path)
+	f, err := storage.OpenFile(dbDir, filename)
 	if err != nil {
 		return nil, err
 	}

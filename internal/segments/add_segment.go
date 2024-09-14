@@ -85,15 +85,13 @@ func (o *AddSegmentOperation) Execute() error {
 	if o.completingSegment != nil {
 		completingSegment := o.completingSegment
 		// write completing segment to disk
-		path := storage.GetPath(o.dbDir, completingSegment.Segment.SegmentFile)
-		f, err := os.Create(path)
+		f, err := storage.CreateFile(o.dbDir, completingSegment.Segment.SegmentFile)
 		if err != nil {
 			log.Printf("failed to create file: %v", err)
 			return err
 		}
 
-		indexPath := storage.GetPath(o.dbDir, completingSegment.Segment.IndexFile)
-		indexF, err := os.Create(indexPath)
+		indexF, err := storage.CreateFile(o.dbDir, completingSegment.Segment.IndexFile)
 		if err != nil {
 			return fmt.Errorf("failed to create index file: %w", err)
 		}
@@ -118,7 +116,7 @@ func (o *AddSegmentOperation) Execute() error {
 		}
 
 		// remove completing wal
-		path = storage.GetPath(o.dbDir, completingSegment.WalFilename)
+		path := storage.GetPath(o.dbDir, completingSegment.WalFilename)
 		err = os.Remove(path)
 		if err != nil {
 			log.Printf("failed to remove file: %v", err)
