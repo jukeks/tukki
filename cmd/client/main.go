@@ -22,6 +22,8 @@ var (
 )
 
 func main() {
+	flag.Parse()
+
 	conn, err := grpc.Dial(fmt.Sprintf("%s:%d", *hostname, *port),
 		grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
