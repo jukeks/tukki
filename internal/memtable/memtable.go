@@ -12,7 +12,8 @@ type Memtable interface {
 	Insert(key string, value string)
 	Delete(key string)
 	Iterate() keyvalue.KeyValueIterator
-	Size() int
+	MemberCount() int
+	Size() uint64
 }
 
 func NewMemtable() Memtable {
@@ -23,7 +24,8 @@ func NewMemtable() Memtable {
 }
 
 type memtableRedBlackTree struct {
-	t *redblacktree.Tree
+	t    *redblacktree.Tree
+	size uint64
 }
 
 func (m *memtableRedBlackTree) Get(key string) (keyvalue.Value, bool) {
@@ -36,12 +38,14 @@ func (m *memtableRedBlackTree) Get(key string) (keyvalue.Value, bool) {
 }
 
 func (m *memtableRedBlackTree) Delete(key string) {
+	m.size += uint64(len(key))
 	m.t.Put(string(key), keyvalue.Value{
 		Deleted: true,
 	})
 }
 
 func (m *memtableRedBlackTree) Insert(key, value string) {
+	m.size += uint64(len(key) + len(value))
 	m.t.Put(string(key), keyvalue.Value{
 		Value: value,
 	})
@@ -72,6 +76,10 @@ func (m *memtableRedBlackTree) Iterate() keyvalue.KeyValueIterator {
 	}
 }
 
-func (m *memtableRedBlackTree) Size() int {
+func (m *memtableRedBlackTree) MemberCount() int {
 	return m.t.Size()
+}
+
+func (m *memtableRedBlackTree) Size() uint64 {
+	return m.size
 }

@@ -124,7 +124,7 @@ func (o *AddSegmentOperation) Execute() error {
 		}
 
 		// populate segment members
-		members := segmentmembers.NewSegmentMembers(uint(completingSegment.Memtable.Size()))
+		members := segmentmembers.NewSegmentMembers(uint(completingSegment.Memtable.MemberCount()))
 		members.Fill(completingSegment.Memtable.Iterate())
 		err = members.Save(o.dbDir, completingSegment.Segment.MembersFile)
 		if err != nil {

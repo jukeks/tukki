@@ -3,8 +3,6 @@ package journal
 import (
 	"bufio"
 	"fmt"
-	"io"
-	"log"
 	"time"
 
 	"github.com/jukeks/tukki/internal/storage"
@@ -15,22 +13,19 @@ type AsynchronousJournalWriter struct {
 	w WriteSyncer
 	b *bufio.Writer
 
-	writeBuff chan writeMessage
+	writeBuff chan protoreflect.ProtoMessage
 	errors    chan error
 	closed    chan bool
+	close     chan bool
 	err       error
-}
-
-type writeMessage struct {
-	Message protoreflect.ProtoMessage
-	closed  bool
 }
 
 func NewAsynchronousJournalWriter(w WriteSyncer) *AsynchronousJournalWriter {
 	writer := &AsynchronousJournalWriter{
 		w:         w,
 		b:         bufio.NewWriterSize(w, 128*1024),
-		writeBuff: make(chan writeMessage, 1000),
+		writeBuff: make(chan protoreflect.ProtoMessage, 1000),
+		close:     make(chan bool, 1),
 		errors:    make(chan error, 1),
 		closed:    make(chan bool, 1),
 	}
@@ -40,7 +35,7 @@ func NewAsynchronousJournalWriter(w WriteSyncer) *AsynchronousJournalWriter {
 }
 
 func (j *AsynchronousJournalWriter) Close() error {
-	j.writeBuff <- writeMessage{closed: true}
+	j.close <- true
 	<-j.closed
 	return nil
 }
@@ -51,7 +46,7 @@ func (j *AsynchronousJournalWriter) Write(journalEntry protoreflect.ProtoMessage
 		return err
 	}
 
-	j.writeBuff <- writeMessage{Message: journalEntry}
+	j.writeBuff <- journalEntry
 	return nil
 }
 
@@ -76,33 +71,33 @@ func (j *AsynchronousJournalWriter) writer() {
 	for {
 		err := j.processBatch()
 		if err != nil {
-			if err == io.EOF {
-				log.Printf("journal writer closed")
-				return
-			}
-
 			fmt.Printf("failed to process batch: %v\n", err)
 			j.errors <- err
 			return
 		}
 
-		time.Sleep(100 * time.Millisecond)
+		select {
+		case <-j.close:
+			err := j.processBatch()
+			if err != nil {
+				fmt.Printf("failed to process batch: %v\n", err)
+				j.errors <- err
+				return
+			}
+			return
+		case <-time.After(100 * time.Millisecond):
+			break
+		}
 	}
 }
 
 func (j *AsynchronousJournalWriter) processBatch() error {
-	closed := false
 	written := false
 messagesAvailable:
 	for {
 		select {
 		case msg := <-j.writeBuff:
-			if msg.closed {
-				closed = true
-				break messagesAvailable
-			}
-
-			_, err := storage.WriteLengthPrefixedProtobufMessage(j.b, msg.Message)
+			_, err := storage.WriteLengthPrefixedProtobufMessage(j.b, msg)
 			if err != nil {
 				fmt.Printf("failed to write journal entry: %v\n", err)
 				return err
@@ -126,10 +121,6 @@ messagesAvailable:
 			fmt.Printf("failed to sync: %v\n", err)
 			return err
 		}
-	}
-
-	if closed {
-		return io.EOF
 	}
 
 	return nil

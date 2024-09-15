@@ -100,7 +100,7 @@ func (db *Database) Delete(key string) error {
 }
 
 func (db *Database) getCurrentWalSize() uint64 {
-	return db.ongoing.Wal.Size()
+	return db.ongoing.Memtable.Size()
 }
 
 func (db *Database) isOverWalSizeLimit() bool {
