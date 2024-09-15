@@ -11,6 +11,7 @@ require (
 
 require (
 	github.com/bits-and-blooms/bitset v1.10.0 // indirect
+	github.com/chzyer/readline v1.5.1 // indirect
 	github.com/jamiealquiza/tachymeter v2.0.0+incompatible // indirect
 )
 
