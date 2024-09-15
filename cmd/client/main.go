@@ -1,16 +1,15 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"flag"
 	"fmt"
 	"io"
 	"log"
-	"os"
 	"strings"
 	"time"
 
+	"github.com/chzyer/readline"
 	kvv1 "github.com/jukeks/tukki/proto/gen/tukki/rpc/kv/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -40,8 +39,8 @@ type Command struct {
 	Value string
 }
 
-func readAndParse(reader *bufio.Reader) (*Command, error) {
-	input, err := reader.ReadString('\n')
+func readAndParse(rl *readline.Instance) (*Command, error) {
+	input, err := rl.Readline()
 	if err != nil {
 		return nil, err
 	}
@@ -65,11 +64,13 @@ func readAndParse(reader *bufio.Reader) (*Command, error) {
 }
 
 func repl(client kvv1.KvServiceClient) {
-	reader := bufio.NewReader(os.Stdin)
+	rl, err := readline.New("> ")
+	if err != nil {
+		log.Fatalf("can not create readline: %v", err)
+	}
 
 	for {
-		fmt.Printf("> ")
-		cmd, err := readAndParse(reader)
+		cmd, err := readAndParse(rl)
 		if err != nil {
 			if err == io.EOF {
 				fmt.Println()
