@@ -27,7 +27,7 @@ jobs:
     - name: Test and coverage
       run: make test-cover
 
-    - name: check test coverage
+    - name: Check test coverage
       uses: vladopajic/go-test-coverage@v2
       with:
         config: ./testcoverage.yml
