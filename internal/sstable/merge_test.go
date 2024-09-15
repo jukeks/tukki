@@ -88,7 +88,7 @@ func checkMemtableAreEqual(mt1, mt2 memtable.Memtable, expectedLen int) bool {
 		return false
 	}
 
-	if mt1.Size() != mt2.Size() {
+	if mt1.MemberCount() != mt2.MemberCount() {
 		return false
 	}
 
