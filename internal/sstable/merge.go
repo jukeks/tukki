@@ -3,12 +3,13 @@ package sstable
 import (
 	"io"
 
+	"github.com/jukeks/tukki/internal/index"
 	"github.com/jukeks/tukki/internal/keyvalue"
 	"github.com/jukeks/tukki/internal/segmentmembers"
 )
 
 func MergeSSTables(sstableWriter io.Writer, a, b keyvalue.KeyValueIterator,
-	members *segmentmembers.SegmentMembers) (KeyMap, error) {
+	members *segmentmembers.SegmentMembers) (index.OffsetMap, error) {
 
 	writer := NewSSTableWriter(sstableWriter)
 

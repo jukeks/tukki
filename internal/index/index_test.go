@@ -3,7 +3,6 @@ package index
 import (
 	"testing"
 
-	"github.com/jukeks/tukki/internal/sstable"
 	"github.com/jukeks/tukki/internal/storage"
 	"github.com/thanhpk/randstr"
 )
@@ -12,7 +11,7 @@ func TestIndex(t *testing.T) {
 	dbDir := t.TempDir()
 	filename := storage.Filename(randstr.String(10))
 
-	entries := make(sstable.KeyMap)
+	entries := make(OffsetMap)
 	entries["key1"] = 0
 	entries["key2"] = 1
 	entries["key3"] = 2

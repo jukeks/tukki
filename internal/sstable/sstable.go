@@ -5,22 +5,21 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/jukeks/tukki/internal/index"
 	"github.com/jukeks/tukki/internal/keyvalue"
 	"github.com/jukeks/tukki/internal/storage"
 	sstablev1 "github.com/jukeks/tukki/proto/gen/tukki/storage/sstable/v1"
 )
 
 type SSTableWriter struct {
-	writer io.Writer
-	keyMap KeyMap
+	writer    io.Writer
+	offsetMap index.OffsetMap
 }
-
-type KeyMap map[string]uint64
 
 func NewSSTableWriter(writer io.Writer) *SSTableWriter {
 	return &SSTableWriter{
-		writer: writer,
-		keyMap: make(KeyMap),
+		writer:    writer,
+		offsetMap: make(index.OffsetMap),
 	}
 }
 
@@ -42,7 +41,7 @@ func (w *SSTableWriter) WriteFromIterator(iterator keyvalue.KeyValueIterator) er
 		if err != nil {
 			return fmt.Errorf("failed to write entry: %w", err)
 		}
-		w.keyMap[entry.Key] = offset
+		w.offsetMap[entry.Key] = offset
 		offset += uint64(len)
 	}
 
@@ -54,8 +53,8 @@ func (w *SSTableWriter) WriteFromIterator(iterator keyvalue.KeyValueIterator) er
 	return nil
 }
 
-func (w *SSTableWriter) WrittenOffsets() KeyMap {
-	return w.keyMap
+func (w *SSTableWriter) WrittenOffsets() index.OffsetMap {
+	return w.offsetMap
 }
 
 type SSTableReader struct {

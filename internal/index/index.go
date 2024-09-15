@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"io"
 
-	"github.com/jukeks/tukki/internal/sstable"
 	"github.com/jukeks/tukki/internal/storage"
 	indexv1 "github.com/jukeks/tukki/proto/gen/tukki/storage/index/v1"
 )
@@ -55,7 +54,9 @@ func NewIndexWriter(writer io.WriteCloser) *IndexWriter {
 	}
 }
 
-func (w *IndexWriter) WriteFromOffsets(offsets sstable.KeyMap) error {
+type OffsetMap map[string]uint64
+
+func (w *IndexWriter) WriteFromOffsets(offsets OffsetMap) error {
 	bw := bufio.NewWriter(w.writer)
 	for key, offset := range offsets {
 		record := indexv1.IndexEntry{
