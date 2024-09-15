@@ -17,6 +17,65 @@ tukki supports only three operations:
 
 Keys and values are both UTF-8 strings.
 
+## Building
+
+```bash
+$ make build
+```
+
+## Running
+
+### Server
+
+```bash
+$ ./bin/server --help
+Usage of ./bin/server:
+  -db-dir string
+    	The directory to store the database (default "./tukki-db")
+  -port int
+    	The server port (default 50051)
+
+$ ./bin/server
+2024/09/15 13:17:40 journal file exists tukki-db/segment_operations.journal, reading journal
+2024/09/15 13:17:40 opening journal for appending
+2024/09/15 13:17:40 journal file exists tukki-db/wal-0.journal, reading journal
+2024/09/15 13:17:40 opening journal for appending
+```
+
+### Client
+
+```bash
+$ ./bin/client --help
+Usage of ./bin/client:
+  -hostname string
+    	The server hostname (default "localhost")
+  -port int
+    	The server port (default 50051)
+
+$ ./bin/client
+> SET foo bar
+Key set (876.041µs)
+> GET foo
+value: bar (929.875µs)
+> GET FOO
+failed to get: rpc error: code = Unknown desc = key not found in segments (951.625µs)
+```
+
+## gRPC Interface
+
+tukki exposes a gRPC interface for its operations. The client and server commands
+use this interface to communicate.
+
+```proto
+service KvService {
+    rpc Query(QueryRequest) returns (QueryResponse) {}
+    rpc Set(SetRequest) returns (SetResponse) {}
+    rpc Delete(DeleteRequest) returns (DeleteResponse) {}
+}
+```
+
+The complete protocol can be seen in [tukki.rpc](proto/tukki/rpc/).
+
 ## Database structures
 
 ### Memtable
