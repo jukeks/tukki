@@ -3,6 +3,7 @@ package journal
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/jukeks/tukki/internal/storage"
@@ -71,8 +72,8 @@ func (j *AsynchronousJournalWriter) writer() {
 	for {
 		err := j.processBatch()
 		if err != nil {
-			fmt.Printf("failed to process batch: %v\n", err)
-			j.errors <- err
+			log.Printf("failed to process batch: %v", err)
+			j.errors <- fmt.Errorf("failed to process batch: %w", err)
 			return
 		}
 
@@ -80,8 +81,8 @@ func (j *AsynchronousJournalWriter) writer() {
 		case <-j.close:
 			err := j.processBatch()
 			if err != nil {
-				fmt.Printf("failed to process batch: %v\n", err)
-				j.errors <- err
+				log.Printf("failed to process batch: %v", err)
+				j.errors <- fmt.Errorf("failed to process batch: %w", err)
 				return
 			}
 			return
@@ -99,8 +100,7 @@ messagesAvailable:
 		case msg := <-j.writeBuff:
 			_, err := storage.WriteLengthPrefixedProtobufMessage(j.b, msg)
 			if err != nil {
-				fmt.Printf("failed to write journal entry: %v\n", err)
-				return err
+				return fmt.Errorf("failed to write journal entry: %w", err)
 			}
 
 			written = true
@@ -112,14 +112,12 @@ messagesAvailable:
 	if written {
 		err := j.b.Flush()
 		if err != nil {
-			fmt.Printf("failed to flush: %v\n", err)
-			return err
+			return fmt.Errorf("failed to flush: %w", err)
 		}
 
 		err = j.w.Sync()
 		if err != nil {
-			fmt.Printf("failed to sync: %v\n", err)
-			return err
+			return fmt.Errorf("failed to sync: %w", err)
 		}
 	}
 
