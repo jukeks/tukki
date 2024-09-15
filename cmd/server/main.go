@@ -7,7 +7,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"path/filepath"
 	"sync"
 
 	"github.com/jukeks/tukki/internal/db"
@@ -16,8 +15,7 @@ import (
 )
 
 func defaultDatabaseDir() string {
-	tmpDir := os.TempDir()
-	return filepath.Join(tmpDir, "tukki")
+	return "./tukki-db"
 }
 
 var (
@@ -26,6 +24,8 @@ var (
 )
 
 func main() {
+	flag.Parse()
+
 	err := os.MkdirAll(*dbDir, 0755)
 	if err != nil {
 		log.Fatalf("failed to create db dir: %v", err)
@@ -36,7 +36,6 @@ func main() {
 		log.Fatalf("failed to open database: %v", err)
 	}
 
-	flag.Parse()
 	ls, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", *port))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
