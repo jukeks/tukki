@@ -87,6 +87,27 @@ sorted by keys.
 
 tukki uses a red black tree for its memtable.
 
+
+### Disk format
+
+tukki uses length prefixed protobuf messages as on disk format for all its types.
+
+```
+ 0                   1                   2                   3   
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                         Message Length                        |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                        Protobuf message                       |
++                                                               +
+```
+
+Length is a 32-bit unsigned integer which represents how many following bytes 
+the message takes.
+
+The messages are specificed at [`tukki.storage` protobuf package](proto/tukki/storage/).
+
+
 ### Write-Ahead Log
 
 Database writes are first written to a write-ahead log (WAL). [In the style of 
@@ -102,7 +123,7 @@ MongoDB](https://www.mongodb.com/docs/manual/reference/configuration-options/#mo
 
 Memtable can be constructed from WAL on restart or crash recovery.
 
-WAL messages are of format
+WAL on disk is a series of:
 
 ```proto
 message WalEntry {
@@ -117,7 +138,7 @@ message WalEntry {
 Sorted-String Table (SSTable) is the on-disk format of the database segments.
 SSTables are immutable files but can be merged and compacted.
 
-SSTable records look like
+SSTable on disk is a series of:
 
 ```proto
 message SSTableRecord {
@@ -151,22 +172,3 @@ Segment journal records creation of new segments and merging existing segments.
 Segment journal is read at startup to find all segments and possible incomplete
 operations.
 
-
-### Disk format
-
-tukki uses length prefixed protobuf messages as on disk format for all its types.
-
-```
- 0                   1                   2                   3   
- 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                         Message Length                        |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                        Protobuf message                       |
-+                                                               +
-```
-
-Length is a 32-bit unsigned integer which represents how many following bytes 
-the message takes.
-
-The messages are specificed at [`tukki.storage` protobuf package](proto/tukki/storage/).
