@@ -27,3 +27,6 @@ coverage.html
 
 .DS_Store
 tukki-db
+./node-1
+./node-2
+./node-3
