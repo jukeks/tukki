@@ -15,11 +15,11 @@ type SynchronousJournalWriter struct {
 	journalCopy *bytes.Buffer
 }
 
-func NewSynchronousJournalWriter(w WriteSyncer) *SynchronousJournalWriter {
+func NewSynchronousJournalWriter(w WriteSyncer, head []byte) *SynchronousJournalWriter {
 	return &SynchronousJournalWriter{
 		w:           w,
 		b:           bufio.NewWriter(w),
-		journalCopy: bytes.NewBuffer(nil),
+		journalCopy: bytes.NewBuffer(head),
 	}
 }
 

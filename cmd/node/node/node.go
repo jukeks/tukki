@@ -259,7 +259,8 @@ func (f *fsm) Restore(rc io.ReadCloser) error {
 		return err
 	}
 
-	return f.db.Restore(snapshot)
+	_, err = f.db.Restore(snapshot)
+	return err
 }
 
 func (f *snapshot) Persist(sink raft.SnapshotSink) error {

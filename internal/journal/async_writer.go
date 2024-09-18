@@ -23,11 +23,11 @@ type AsynchronousJournalWriter struct {
 	err       error
 }
 
-func NewAsynchronousJournalWriter(w WriteSyncer) *AsynchronousJournalWriter {
+func NewAsynchronousJournalWriter(w WriteSyncer, head []byte) *AsynchronousJournalWriter {
 	writer := &AsynchronousJournalWriter{
 		w:           w,
 		b:           bufio.NewWriterSize(w, 128*1024),
-		journalCopy: bytes.NewBuffer(nil),
+		journalCopy: bytes.NewBuffer(head),
 		writeBuff:   make(chan protoreflect.ProtoMessage, 1000),
 		close:       make(chan bool, 1),
 		errors:      make(chan error, 1),

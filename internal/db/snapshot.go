@@ -3,6 +3,7 @@ package db
 import (
 	"errors"
 
+	"github.com/jukeks/tukki/internal/segments"
 	snapshotv1 "github.com/jukeks/tukki/proto/gen/tukki/replication/snapshot/v1"
 	"google.golang.org/protobuf/proto"
 )
@@ -48,6 +49,10 @@ func (db *Database) Snapshot() *Snapshot {
 	return NewSnapshot(wal, operations)
 }
 
-func (db *Database) Restore(snapshot *Snapshot) error {
-	return errors.New("not implemented")
+type RestoreResult struct {
+	MissingSegments []segments.SegmentId
+}
+
+func (db *Database) Restore(snapshot *Snapshot) (RestoreResult, error) {
+	return RestoreResult{}, errors.New("not implemented")
 }

@@ -41,6 +41,7 @@ func OpenJournal(dbDir string, journalName storage.Filename, writemode WriteMode
 	journalPath := storage.GetPath(dbDir, journalName)
 
 	var journalFile *os.File
+	var journalCopy []byte
 	var err error
 
 	if _, err = os.Stat(journalPath); err == nil {
@@ -49,6 +50,10 @@ func OpenJournal(dbDir string, journalName storage.Filename, writemode WriteMode
 		journalFile, err = os.Open(journalPath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to open journal file %s: %w", journalPath, err)
+		}
+		journalCopy, err = os.ReadFile(journalPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read journal file %s: %w", journalPath, err)
 		}
 
 		journalReader := NewJournalReader(journalFile)
@@ -74,7 +79,7 @@ func OpenJournal(dbDir string, journalName storage.Filename, writemode WriteMode
 
 	return &Journal{
 		File:   journalFile,
-		Writer: NewJournalWriter(journalFile, writemode),
+		Writer: NewJournalWriter(journalFile, writemode, journalCopy),
 	}, nil
 }
 
@@ -83,10 +88,10 @@ func (j *Journal) Close() error {
 	return j.File.Close()
 }
 
-func NewJournalWriter(w WriteSyncer, writeMode WriteMode) JournalWriter {
+func NewJournalWriter(w WriteSyncer, writeMode WriteMode, head []byte) JournalWriter {
 	if writeMode == WriteModeSync {
-		return NewSynchronousJournalWriter(w)
+		return NewSynchronousJournalWriter(w, head)
 	}
 
-	return NewAsynchronousJournalWriter(w)
+	return NewAsynchronousJournalWriter(w, head)
 }
