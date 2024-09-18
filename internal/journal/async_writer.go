@@ -2,6 +2,7 @@ package journal
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"log"
 	"time"
@@ -11,8 +12,9 @@ import (
 )
 
 type AsynchronousJournalWriter struct {
-	w WriteSyncer
-	b *bufio.Writer
+	w           WriteSyncer
+	b           *bufio.Writer
+	journalCopy *bytes.Buffer
 
 	writeBuff chan protoreflect.ProtoMessage
 	errors    chan error
@@ -21,14 +23,15 @@ type AsynchronousJournalWriter struct {
 	err       error
 }
 
-func NewAsynchronousJournalWriter(w WriteSyncer) *AsynchronousJournalWriter {
+func NewAsynchronousJournalWriter(w WriteSyncer, head []byte) *AsynchronousJournalWriter {
 	writer := &AsynchronousJournalWriter{
-		w:         w,
-		b:         bufio.NewWriterSize(w, 128*1024),
-		writeBuff: make(chan protoreflect.ProtoMessage, 1000),
-		close:     make(chan bool, 1),
-		errors:    make(chan error, 1),
-		closed:    make(chan bool, 1),
+		w:           w,
+		b:           bufio.NewWriterSize(w, 128*1024),
+		journalCopy: bytes.NewBuffer(head),
+		writeBuff:   make(chan protoreflect.ProtoMessage, 1000),
+		close:       make(chan bool, 1),
+		errors:      make(chan error, 1),
+		closed:      make(chan bool, 1),
 	}
 	go writer.writer()
 
@@ -47,8 +50,20 @@ func (j *AsynchronousJournalWriter) Write(journalEntry protoreflect.ProtoMessage
 		return err
 	}
 
+	_, err = storage.WriteLengthPrefixedProtobufMessage(j.journalCopy, journalEntry)
+	if err != nil {
+		return fmt.Errorf("failed to write journal entry to copy: %w", err)
+	}
+
 	j.writeBuff <- journalEntry
 	return nil
+}
+
+func (j *AsynchronousJournalWriter) Snapshot() []byte {
+	b := j.journalCopy.Bytes()
+	buff := make([]byte, len(b))
+	copy(buff, b)
+	return buff
 }
 
 func (j *AsynchronousJournalWriter) checkError() error {

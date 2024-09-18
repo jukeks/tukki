@@ -33,7 +33,7 @@ type Node struct {
 	RaftBind string
 	inmem    bool
 
-	mu sync.Mutex
+	mu sync.RWMutex
 	db *db.Database
 
 	raft *raft.Raft // The consensus mechanism
@@ -117,8 +117,8 @@ func (n *Node) Open(enableSingle bool, localID string) error {
 
 // Get returns the value for the given key.
 func (n *Node) Get(key string) (string, error) {
-	n.mu.Lock()
-	defer n.mu.Unlock()
+	n.mu.RLock()
+	defer n.mu.RUnlock()
 	return n.db.Get(key)
 }
 
@@ -217,20 +217,6 @@ func (f *fsm) Apply(l *raft.Log) interface{} {
 	}
 }
 
-// Snapshot returns a snapshot of the key-value store.
-func (f *fsm) Snapshot() (raft.FSMSnapshot, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	// TODO
-	return &fsmSnapshot{}, nil
-}
-
-// Restore stores the key-value store to a previous state.
-func (f *fsm) Restore(rc io.ReadCloser) error {
-	// TODO
-	return nil
-}
-
 func (f *fsm) applySet(key, value string) interface{} {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -251,14 +237,36 @@ func (f *fsm) applyDelete(key string) interface{} {
 	return nil
 }
 
-type fsmSnapshot struct {
-	store map[string]string
+type snapshot struct {
+	snapshot *db.Snapshot
 }
 
-func (f *fsmSnapshot) Persist(sink raft.SnapshotSink) error {
+func (f *fsm) Snapshot() (raft.FSMSnapshot, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	ss := f.db.Snapshot()
+	return &snapshot{snapshot: ss}, nil
+}
+
+func (f *fsm) Restore(rc io.ReadCloser) error {
+	buff, err := io.ReadAll(rc)
+	if err != nil {
+		return err
+	}
+	snapshot, err := db.UnmarshalSnapshot(buff)
+	if err != nil {
+		return err
+	}
+
+	_, err = f.db.Restore(snapshot)
+	return err
+}
+
+func (f *snapshot) Persist(sink raft.SnapshotSink) error {
 	err := func() error {
 		// Encode data.
-		b, err := json.Marshal(f.store)
+		b, err := f.snapshot.Marshal()
 		if err != nil {
 			return err
 		}
@@ -279,4 +287,4 @@ func (f *fsmSnapshot) Persist(sink raft.SnapshotSink) error {
 	return err
 }
 
-func (f *fsmSnapshot) Release() {}
+func (f *snapshot) Release() {}

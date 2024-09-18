@@ -47,6 +47,10 @@ func (mtj *Wal) Close() error {
 	return mtj.journal.Close()
 }
 
+func (mtj *Wal) Snapshot() []byte {
+	return mtj.journal.Writer.Snapshot()
+}
+
 func readJournal(journalReader *journal.JournalReader, mt Memtable) error {
 	for {
 		journalEntry := &walv1.WalEntry{}

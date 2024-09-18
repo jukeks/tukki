@@ -152,3 +152,7 @@ func (soj *SegmentOperationJournal) Write(entry *segmentsv1.SegmentOperationJour
 func (soj *SegmentOperationJournal) Close() error {
 	return soj.journal.Close()
 }
+
+func (soj *SegmentOperationJournal) Snapshot() []byte {
+	return soj.journal.Writer.Snapshot()
+}
