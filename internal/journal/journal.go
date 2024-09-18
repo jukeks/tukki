@@ -1,7 +1,6 @@
 package journal
 
 import (
-	"bufio"
 	"fmt"
 	"io"
 	"log"
@@ -26,6 +25,7 @@ type WriteSyncer interface {
 type JournalWriter interface {
 	Write(journalEntry protoreflect.ProtoMessage) error
 	Close() error
+	Snapshot() []byte
 }
 
 type Journal struct {
@@ -85,7 +85,7 @@ func (j *Journal) Close() error {
 
 func NewJournalWriter(w WriteSyncer, writeMode WriteMode) JournalWriter {
 	if writeMode == WriteModeSync {
-		return &SynchronousJournalWriter{w: w, b: bufio.NewWriter(w)}
+		return NewSynchronousJournalWriter(w)
 	}
 
 	return NewAsynchronousJournalWriter(w)
