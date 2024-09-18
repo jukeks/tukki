@@ -88,9 +88,6 @@ func NewKvServer(node *node.Node) *kvServer {
 }
 
 func (s *kvServer) Query(ctx context.Context, req *kvv1.QueryRequest) (*kvv1.QueryResponse, error) {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-
 	value, err := s.node.Get(req.Key)
 	if err != nil {
 		return nil, err
@@ -103,9 +100,6 @@ func (s *kvServer) Query(ctx context.Context, req *kvv1.QueryRequest) (*kvv1.Que
 }
 
 func (s *kvServer) Set(ctx context.Context, req *kvv1.SetRequest) (*kvv1.SetResponse, error) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
 	err := s.node.Set(req.Pair.Key, req.Pair.Value)
 	if err != nil {
 		return nil, err
@@ -115,9 +109,6 @@ func (s *kvServer) Set(ctx context.Context, req *kvv1.SetRequest) (*kvv1.SetResp
 }
 
 func (s *kvServer) Delete(ctx context.Context, req *kvv1.DeleteRequest) (*kvv1.DeleteResponse, error) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
 	err := s.node.Delete(req.Key)
 	if err != nil {
 		return nil, err

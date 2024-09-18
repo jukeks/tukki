@@ -33,7 +33,7 @@ type Node struct {
 	RaftBind string
 	inmem    bool
 
-	mu sync.Mutex
+	mu sync.RWMutex
 	db *db.Database
 
 	raft *raft.Raft // The consensus mechanism
@@ -117,8 +117,8 @@ func (n *Node) Open(enableSingle bool, localID string) error {
 
 // Get returns the value for the given key.
 func (n *Node) Get(key string) (string, error) {
-	n.mu.Lock()
-	defer n.mu.Unlock()
+	n.mu.RLock()
+	defer n.mu.RUnlock()
 	return n.db.Get(key)
 }
 
