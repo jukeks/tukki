@@ -12,3 +12,22 @@ func TestGetPathPanics(t *testing.T) {
 	}()
 	GetPath("", "test")
 }
+
+func TestFileExists(t *testing.T) {
+	dbDir := t.TempDir()
+
+	filename := Filename("test")
+	if FileExists(dbDir, filename) {
+		t.Errorf("file exists")
+	}
+
+	f, err := CreateFile(dbDir, filename)
+	if err != nil {
+		t.Fatalf("failed to create file: %v", err)
+	}
+	f.Close()
+
+	if !FileExists(dbDir, filename) {
+		t.Errorf("file does not exist")
+	}
+}

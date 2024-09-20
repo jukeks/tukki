@@ -1,6 +1,8 @@
 package node
 
 import (
+	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,8 +15,14 @@ import (
 
 	"github.com/hashicorp/raft"
 	raftboltdb "github.com/hashicorp/raft-boltdb/v2"
+	sstablev1 "github.com/jukeks/tukki/proto/gen/tukki/rpc/sstable/v1"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/jukeks/tukki/internal/db"
+	"github.com/jukeks/tukki/internal/keyvalue"
+	"github.com/jukeks/tukki/internal/sstable"
+	"github.com/jukeks/tukki/internal/storage"
 )
 
 const (
@@ -28,13 +36,20 @@ type command struct {
 	Value string `json:"value,omitempty"`
 }
 
+type Peer struct {
+	Id   string
+	Addr string
+}
+
 type Node struct {
 	RaftDir  string
 	RaftBind string
 	inmem    bool
+	peers    []Peer
 
-	mu sync.RWMutex
-	db *db.Database
+	mu    sync.RWMutex
+	db    *db.Database
+	dbDir string
 
 	raft *raft.Raft // The consensus mechanism
 
@@ -42,11 +57,13 @@ type Node struct {
 }
 
 // New returns a new Store.
-func New(inmem bool, db *db.Database, raftDir string, raftBind string) *Node {
+func New(inmem bool, peers []Peer, db *db.Database, dbDir, raftDir, raftBind string) *Node {
 	return &Node{
 		inmem:    inmem,
+		peers:    peers,
 		logger:   log.New(os.Stderr, "[store] ", log.LstdFlags),
 		db:       db,
+		dbDir:    dbDir,
 		RaftDir:  raftDir,
 		RaftBind: raftBind,
 	}
@@ -259,7 +276,59 @@ func (f *fsm) Restore(rc io.ReadCloser) error {
 		return err
 	}
 
-	_, err = f.db.Restore(snapshot)
+	result, err := f.db.Restore(snapshot)
+	if err != nil {
+		return fmt.Errorf("failed to restore snapshot: %w", err)
+	}
+	if len(result.MissingSegments) > 0 {
+		for _, peer := range f.peers {
+			conn, err := grpc.Dial(peer.Addr,
+				grpc.WithTransportCredentials(insecure.NewCredentials()))
+			if err != nil {
+				log.Fatalf("can not connect with server %v", err)
+			}
+			client := sstablev1.NewSstableServiceClient(conn)
+			for _, segment := range result.MissingSegments {
+				req := &sstablev1.GetSstableRequest{
+					Id: uint64(segment.Id),
+				}
+				stream, err := client.GetSstable(context.Background(), req)
+				if err != nil {
+					log.Fatalf("can not get sstable from server %v", err)
+				}
+
+				f, err := storage.CreateFile(f.dbDir, segment.SegmentFile)
+				bw := bufio.NewWriter(f)
+				writer := sstable.NewSSTableWriter(bw)
+				for {
+					resp, err := stream.Recv()
+					if err == io.EOF {
+						break
+					}
+					if err != nil {
+						log.Fatalf("can not receive sstable from server %v", err)
+					}
+					_, err = writer.Write(keyvalue.IteratorEntry{
+						Key:     resp.Record.Key,
+						Value:   resp.Record.Value,
+						Deleted: resp.Record.Deleted,
+					})
+					if err != nil {
+						fmt.Errorf("can not add segment to db: %w", err)
+					}
+				}
+				if err := bw.Flush(); err != nil {
+					fmt.Errorf("can not flush writer %w", err)
+				}
+				if err := f.Close(); err != nil {
+					fmt.Errorf("can not close file %w", err)
+				}
+
+				// TODO members and indexes
+			}
+		}
+	}
+
 	return err
 }
 

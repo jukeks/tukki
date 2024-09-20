@@ -3,6 +3,7 @@ package db
 import (
 	"fmt"
 	"log"
+	"sync"
 
 	"github.com/jukeks/tukki/internal/index"
 	"github.com/jukeks/tukki/internal/segmentmembers"
@@ -14,6 +15,7 @@ type Database struct {
 	dbDir            string
 	operationJournal *segments.SegmentOperationJournal
 
+	mu         sync.Mutex
 	segments   map[segments.SegmentId]segments.SegmentMetadata
 	members    map[segments.SegmentId]*segmentmembers.SegmentMembers
 	indexes    map[segments.SegmentId]*index.Index
@@ -207,7 +209,11 @@ func (db *Database) SealCurrentSegment() (*LiveSegment, error) {
 		log.Printf("failed to execute operation: %v", err)
 		return nil, err
 	}
+
+	db.mu.Lock()
 	db.segments[ongoingSegment.Segment.Id] = ongoingSegment.Segment
+	db.mu.Unlock()
+
 	db.ongoing = nextSegment
 	err = db.ongoing.Open(db.dbDir)
 	if err != nil {
@@ -251,8 +257,10 @@ func (db *Database) Close() error {
 }
 
 func (db *Database) MergeSegments(a, b segments.SegmentId) error {
+	db.mu.Lock()
 	segmentA := db.segments[a]
 	segmentB := db.segments[b]
+	db.mu.Unlock()
 
 	mergedSegment := segments.SegmentMetadata{
 		Id:          segmentB.Id,
@@ -276,19 +284,21 @@ func (db *Database) MergeSegments(a, b segments.SegmentId) error {
 		return err
 	}
 
-	delete(db.segments, a)
-	delete(db.segments, b)
-	db.segments[mergedSegment.Id] = mergedSegment
-
 	members, err := segmentmembers.OpenSegmentMembers(db.dbDir,
 		mergedSegment.MembersFile)
 	if err != nil {
 		log.Printf("failed to open segment members: %v", err)
 		return err
 	}
+	db.mu.Lock()
 	delete(db.members, a)
 	delete(db.members, b)
 	db.members[mergedSegment.Id] = members
+
+	delete(db.segments, a)
+	delete(db.segments, b)
+	db.segments[mergedSegment.Id] = mergedSegment
+	db.mu.Unlock()
 
 	completedEntry := op.CompletedJournalEntry()
 	err = db.operationJournal.Write(completedEntry)

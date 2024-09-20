@@ -65,6 +65,9 @@ func (db *Database) getFromSegments(key string) (string, error) {
 }
 
 func (db *Database) getSegmentsSorted() []segments.SegmentMetadata {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
 	keys := make([]segments.SegmentId, len(db.segments))
 	i := 0
 	for k := range db.segments {
@@ -81,6 +84,37 @@ func (db *Database) getSegmentsSorted() []segments.SegmentMetadata {
 	}
 
 	return segments
+}
+
+func (db *Database) GetSegmentMetadata() map[segments.SegmentId]segments.SegmentMetadata {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	segments := make(map[segments.SegmentId]segments.SegmentMetadata)
+	for k, v := range db.segments {
+		segments[k] = v
+	}
+
+	return segments
+}
+
+type Cleanup func()
+
+func (db *Database) GetSSTableReader(segmentId segments.SegmentId) (*sstable.SSTableReader, Cleanup, error) {
+	db.mu.Lock()
+	segmentMetadata, ok := db.segments[segmentId]
+	db.mu.Unlock()
+
+	if !ok {
+		return nil, nil, fmt.Errorf("segment not found: %d", segmentId)
+	}
+
+	f, err := storage.OpenFile(db.dbDir, segmentMetadata.SegmentFile)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return sstable.NewSSTableReader(f), func() { f.Close() }, nil
 }
 
 func (db *Database) Set(key, value string) error {
