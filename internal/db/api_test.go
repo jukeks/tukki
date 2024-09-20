@@ -77,3 +77,70 @@ func TestGetFromSegments(t *testing.T) {
 		t.Fatalf("expected value %s, got %s", value, val)
 	}
 }
+
+func TestGetSSTableReader(t *testing.T) {
+	db, err := OpenDatabase(t.TempDir())
+	if err != nil {
+		t.Fatalf("failed to open database: %v", err)
+	}
+
+	key := randstr.String(10)
+	value := randstr.String(10)
+	err = db.Set(key, value)
+	if err != nil {
+		t.Fatalf("failed to set key-value pair: %v", err)
+	}
+
+	_, err = db.SealCurrentSegment()
+	if err != nil {
+		t.Fatalf("failed to seal segment: %v", err)
+	}
+
+	reader, cleanup, err := db.GetSSTableReader(0)
+	if err != nil {
+		t.Fatalf("failed to get segment reader: %v", err)
+	}
+	defer cleanup()
+
+	val, err := reader.Next()
+	if err != nil {
+		t.Fatalf("failed to read value: %v", err)
+	}
+
+	if val.Key != key {
+		t.Fatalf("expected key %s, got %s", key, val.Key)
+	}
+}
+
+func TestGetSegmentMetadata(t *testing.T) {
+	db, err := OpenDatabase(t.TempDir())
+	if err != nil {
+		t.Fatalf("failed to open database: %v", err)
+	}
+
+	key := randstr.String(10)
+	value := randstr.String(10)
+	err = db.Set(key, value)
+	if err != nil {
+		t.Fatalf("failed to set key-value pair: %v", err)
+	}
+
+	_, err = db.SealCurrentSegment()
+	if err != nil {
+		t.Fatalf("failed to seal segment: %v", err)
+	}
+
+	segments := db.GetSegmentMetadata()
+	if len(segments) != 1 {
+		t.Fatalf("expected 1 segment, got %d", len(segments))
+	}
+
+	segment, ok := segments[0]
+	if !ok {
+		t.Fatalf("segment not found")
+	}
+
+	if segment.Id != 0 {
+		t.Fatalf("expected segment id 0, got %d", segment.Id)
+	}
+}
