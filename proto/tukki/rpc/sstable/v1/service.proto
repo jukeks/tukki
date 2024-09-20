@@ -1,0 +1,24 @@
+syntax="proto3";
+
+package tukki.rpc.sstable.v1;
+
+option go_package = "github.com/jukeks/tukki/rpc/sstable";
+
+
+service SstableService {
+    rpc GetSstable(GetSstableRequest) returns (stream GetSstableResponse) {}
+}
+
+message GetSstableRequest {
+    uint64 id = 1;
+}
+
+message SSTableRecord {
+    string key = 1;
+    string value = 2;
+    bool deleted = 3;
+}
+
+message GetSstableResponse {
+    SSTableRecord record = 1;
+}
