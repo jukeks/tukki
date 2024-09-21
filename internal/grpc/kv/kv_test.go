@@ -2,13 +2,12 @@ package kv
 
 import (
 	"context"
-	"net"
 	"testing"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 
 	kvv1 "github.com/jukeks/tukki/proto/gen/tukki/rpc/kv/v1"
+	"github.com/jukeks/tukki/testutil"
 )
 
 type Store struct {
@@ -37,29 +36,13 @@ func (s *Store) Delete(key string) error {
 func TestKvServer(t *testing.T) {
 	store := &Store{store: make(map[string]string)}
 
-	server := NewKVServer(store)
-	s := grpc.NewServer()
-	kvv1.RegisterKvServiceServer(s, server)
-
-	lis, err := net.Listen("tcp", "localhost:0")
+	conn, cleanup, err := testutil.RunServicer(func(s *grpc.Server) {
+		kvv1.RegisterKvServiceServer(s, NewKVServer(store))
+	})
 	if err != nil {
-		t.Fatalf("failed to listen: %v", err)
+		t.Fatalf("failed to run servicer: %v", err)
 	}
-	defer lis.Close()
-
-	go func() {
-		if err := s.Serve(lis); err != nil {
-			t.Logf("failed to serve: %v", err)
-		}
-	}()
-	defer s.Stop()
-
-	conn, err := grpc.Dial(lis.Addr().String(),
-		grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		t.Fatalf("failed to dial: %v", err)
-	}
-	defer conn.Close()
+	defer cleanup()
 
 	client := kvv1.NewKvServiceClient(conn)
 	ctx := context.Background()
