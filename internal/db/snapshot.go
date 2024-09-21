@@ -7,7 +7,11 @@ import (
 	"io"
 
 	"github.com/jukeks/tukki/internal/storage/files"
+	"github.com/jukeks/tukki/internal/storage/index"
+	"github.com/jukeks/tukki/internal/storage/keyvalue"
+	"github.com/jukeks/tukki/internal/storage/segmentmembers"
 	"github.com/jukeks/tukki/internal/storage/segments"
+	"github.com/jukeks/tukki/internal/storage/sstable"
 	snapshotv1 "github.com/jukeks/tukki/proto/gen/tukki/replication/snapshot/v1"
 	"google.golang.org/protobuf/proto"
 )
@@ -123,5 +127,43 @@ func checkFilesExist(dbDir string, filenames ...files.Filename) error {
 			return fmt.Errorf("file %s does not exist", file)
 		}
 	}
+	return nil
+}
+
+func (db *Database) RestoreSegment(segment segments.SegmentMetadata, iterator keyvalue.KeyValueIterator) error {
+	f, err := files.CreateFile(db.dbDir, segment.SegmentFile)
+	if err != nil {
+		return fmt.Errorf("failed to create segment file: %w", err)
+	}
+
+	writer := sstable.NewSSTableWriter(f)
+	if err := writer.WriteFromIterator(iterator); err != nil {
+		return fmt.Errorf("failed to write segment: %w", err)
+	}
+	if err := f.Close(); err != nil {
+		return fmt.Errorf("failed to close segment file: %w", err)
+	}
+
+	offsets := writer.WrittenOffsets()
+	f, err = files.CreateFile(db.dbDir, segment.IndexFile)
+	if err != nil {
+		return fmt.Errorf("failed to create index file: %w", err)
+	}
+	indexWriter := index.NewIndexWriter(f)
+	if err := indexWriter.WriteFromOffsets(offsets); err != nil {
+		return fmt.Errorf("failed to write index: %w", err)
+	}
+	if err := f.Close(); err != nil {
+		return fmt.Errorf("failed to close index file: %w", err)
+	}
+
+	members := segmentmembers.NewSegmentMembers(uint(len(offsets)))
+	for key := range offsets {
+		members.Add(key)
+	}
+	if err := members.Save(db.dbDir, segment.MembersFile); err != nil {
+		return fmt.Errorf("failed to save members: %w", err)
+	}
+
 	return nil
 }

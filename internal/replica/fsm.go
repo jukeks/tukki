@@ -1,7 +1,6 @@
 package replica
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -10,10 +9,8 @@ import (
 
 	"github.com/hashicorp/raft"
 	"github.com/jukeks/tukki/internal/db"
-	"github.com/jukeks/tukki/internal/storage/files"
 	"github.com/jukeks/tukki/internal/storage/keyvalue"
 	"github.com/jukeks/tukki/internal/storage/segments"
-	"github.com/jukeks/tukki/internal/storage/sstable"
 	sstablev1 "github.com/jukeks/tukki/proto/gen/tukki/rpc/sstable/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -101,6 +98,14 @@ func (f *fsm) Restore(rc io.ReadCloser) error {
 	return err
 }
 
+type SstableIterator struct {
+	next func() (keyvalue.IteratorEntry, error)
+}
+
+func (i *SstableIterator) Next() (keyvalue.IteratorEntry, error) {
+	return i.next()
+}
+
 func (f *fsm) handleMissingSegments(missingSegments []segments.SegmentMetadata) error {
 	if len(missingSegments) == 0 {
 		return nil
@@ -122,38 +127,25 @@ func (f *fsm) handleMissingSegments(missingSegments []segments.SegmentMetadata) 
 				log.Fatalf("can not get sstable from server %v", err)
 			}
 
-			f, err := files.CreateFile(f.dbDir, segment.SegmentFile)
-			if err != nil {
-				return fmt.Errorf("can not create file %w", err)
+			iterator := &SstableIterator{
+				next: func() (keyvalue.IteratorEntry, error) {
+					resp, err := stream.Recv()
+					if err == io.EOF {
+						return keyvalue.IteratorEntry{}, io.EOF
+					}
+					if err != nil {
+						return keyvalue.IteratorEntry{}, fmt.Errorf("can not receive sstable from server %w", err)
+					}
+					return keyvalue.IteratorEntry{
+						Key:     resp.Record.Key,
+						Value:   resp.Record.Value,
+						Deleted: resp.Record.Deleted,
+					}, nil
+				},
 			}
-
-			bw := bufio.NewWriter(f)
-			writer := sstable.NewSSTableWriter(bw)
-			for {
-				resp, err := stream.Recv()
-				if err == io.EOF {
-					break
-				}
-				if err != nil {
-					return fmt.Errorf("can not receive sstable from server %w", err)
-				}
-				_, err = writer.Write(keyvalue.IteratorEntry{
-					Key:     resp.Record.Key,
-					Value:   resp.Record.Value,
-					Deleted: resp.Record.Deleted,
-				})
-				if err != nil {
-					return fmt.Errorf("can not add segment to db: %w", err)
-				}
+			if err := f.db.RestoreSegment(segment, iterator); err != nil {
+				return fmt.Errorf("failed to restore segment: %w", err)
 			}
-			if err := bw.Flush(); err != nil {
-				return fmt.Errorf("can not flush writer %w", err)
-			}
-			if err := f.Close(); err != nil {
-				return fmt.Errorf("can not close file %w", err)
-			}
-
-			// TODO members and indexes
 		}
 	}
 

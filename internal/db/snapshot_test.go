@@ -1,6 +1,11 @@
 package db
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/jukeks/tukki/internal/storage/files"
+	"github.com/jukeks/tukki/internal/storage/sstable"
+)
 
 func TestSnapshots(t *testing.T) {
 	dbDir := t.TempDir()
@@ -124,5 +129,61 @@ func TestRestoreMissingSegments(t *testing.T) {
 
 	if len(result.MissingSegments) != 1 {
 		t.Fatalf("expected 1 missing segment, got %d", len(result.MissingSegments))
+	}
+}
+
+func TestRestoreSegments(t *testing.T) {
+	dbDir := t.TempDir()
+	db, err := OpenDatabase(dbDir)
+	if err != nil {
+		t.Fatalf("failed to open segment manager: %v", err)
+	}
+
+	if err := db.Set("key1", "value1"); err != nil {
+		t.Fatalf("failed to set key1: %v", err)
+	}
+
+	if _, err := db.SealCurrentSegment(); err != nil {
+		t.Fatalf("failed to seal current segment: %v", err)
+	}
+
+	ss := db.Snapshot()
+	if ss == nil {
+		t.Fatalf("snapshot is nil")
+	}
+
+	dbDir2 := t.TempDir()
+	db2, err := OpenDatabase(dbDir2)
+	if err != nil {
+		t.Fatalf("failed to open segment manager: %v", err)
+	}
+	db2.Close()
+
+	result, err := db2.Restore(ss)
+	if err != nil {
+		t.Fatalf("failed to restore snapshot: %v", err)
+	}
+
+	if len(result.MissingSegments) != 1 {
+		t.Fatalf("expected 1 missing segment, got %d", len(result.MissingSegments))
+	}
+
+	f, err := files.OpenFile(dbDir, result.MissingSegments[0].SegmentFile)
+	if err != nil {
+		t.Fatalf("failed to open segment file: %v", err)
+	}
+	defer f.Close()
+	reader := sstable.NewSSTableReader(f)
+	if err := db2.RestoreSegment(result.MissingSegments[0], reader); err != nil {
+		t.Fatalf("failed to restore segment: %v", err)
+	}
+
+	db2, err = OpenDatabase(dbDir2)
+	if err != nil {
+		t.Fatalf("failed to open segment manager: %v", err)
+	}
+
+	if _, err := db2.Get("key1"); err != nil {
+		t.Fatalf("failed to get key1: %v", err)
 	}
 }
