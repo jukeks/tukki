@@ -111,7 +111,10 @@ func (f *fsm) handleMissingSegments(missingSegments []segments.SegmentMetadata) 
 		return nil
 	}
 
+	f.logger.Printf("missing segments: %v", missingSegments)
+
 	for _, peer := range f.peers {
+		f.logger.Printf("requesting missing segments from: %v", peer.Addr)
 		conn, err := grpc.Dial(peer.Addr,
 			grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
