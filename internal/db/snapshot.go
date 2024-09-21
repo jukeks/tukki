@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/jukeks/tukki/internal/segments"
-	"github.com/jukeks/tukki/internal/storage"
+	"github.com/jukeks/tukki/internal/storage/files"
+	"github.com/jukeks/tukki/internal/storage/segments"
 	snapshotv1 "github.com/jukeks/tukki/proto/gen/tukki/replication/snapshot/v1"
 	"google.golang.org/protobuf/proto"
 )
@@ -59,7 +59,7 @@ type RestoreResult struct {
 
 func (db *Database) Restore(snapshot *Snapshot) (*RestoreResult, error) {
 	// overwrite segment journal
-	f, err := storage.CreateFile(db.dbDir, segments.SegmentJournalFilename)
+	f, err := files.CreateFile(db.dbDir, segments.SegmentJournalFilename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create segment journal file: %w", err)
 	}
@@ -87,7 +87,7 @@ func (db *Database) Restore(snapshot *Snapshot) (*RestoreResult, error) {
 
 	// overwrite current WAL
 	walBuff := bytes.NewBuffer(snapshot.Wal)
-	f, err = storage.CreateFile(db.dbDir, currentSegments.Ongoing.WalFilename)
+	f, err = files.CreateFile(db.dbDir, currentSegments.Ongoing.WalFilename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create segment journal file: %w", err)
 	}
@@ -111,9 +111,9 @@ func (db *Database) Restore(snapshot *Snapshot) (*RestoreResult, error) {
 	return &RestoreResult{MissingSegments: missingSegments}, nil
 }
 
-func checkFilesExist(dbDir string, files ...storage.Filename) error {
-	for _, file := range files {
-		if !storage.FileExists(dbDir, file) {
+func checkFilesExist(dbDir string, filenames ...files.Filename) error {
+	for _, file := range filenames {
+		if !files.FileExists(dbDir, file) {
 			return fmt.Errorf("file %s does not exist", file)
 		}
 	}

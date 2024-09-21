@@ -6,9 +6,9 @@ import (
 	"log"
 	"sort"
 
-	"github.com/jukeks/tukki/internal/segments"
-	"github.com/jukeks/tukki/internal/sstable"
-	"github.com/jukeks/tukki/internal/storage"
+	"github.com/jukeks/tukki/internal/storage/files"
+	"github.com/jukeks/tukki/internal/storage/segments"
+	"github.com/jukeks/tukki/internal/storage/sstable"
 )
 
 var ErrKeyNotFound = errors.New("key not found in segments")
@@ -38,7 +38,7 @@ func (db *Database) getFromSegments(key string) (string, error) {
 			continue
 		}
 
-		segmentFile, err := storage.OpenFile(db.dbDir, segment.SegmentFile)
+		segmentFile, err := files.OpenFile(db.dbDir, segment.SegmentFile)
 		if err != nil {
 			return "", err
 		}
@@ -109,7 +109,7 @@ func (db *Database) GetSSTableReader(segmentId segments.SegmentId) (*sstable.SST
 		return nil, nil, fmt.Errorf("segment not found: %d", segmentId)
 	}
 
-	f, err := storage.OpenFile(db.dbDir, segmentMetadata.SegmentFile)
+	f, err := files.OpenFile(db.dbDir, segmentMetadata.SegmentFile)
 	if err != nil {
 		return nil, nil, err
 	}
