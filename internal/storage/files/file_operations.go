@@ -28,6 +28,11 @@ func CreateFile(dbDir string, filename Filename) (*os.File, error) {
 	return os.Create(path)
 }
 
+func RemoveFile(dbDir string, filename Filename) error {
+	path := GetPath(dbDir, filename)
+	return os.Remove(path)
+}
+
 func FileExists(dbDir string, filename Filename) bool {
 	path := GetPath(dbDir, filename)
 	_, err := os.Stat(path)

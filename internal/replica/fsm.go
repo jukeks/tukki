@@ -80,11 +80,6 @@ func (f *fsm) Restore(rc io.ReadCloser) error {
 		return err
 	}
 
-	/*
-		currentSegments := f.db.GetSegmentMetadata()
-		ongoingSegment := f.db.GetOnGoingSegment()
-	*/
-
 	f.db.Close()
 
 	result, err := f.db.Restore(snapshot)
@@ -100,6 +95,7 @@ func (f *fsm) Restore(rc io.ReadCloser) error {
 	if err != nil {
 		return fmt.Errorf("failed to open database: %w", err)
 	}
+
 	f.db = db
 
 	return err
@@ -164,10 +160,10 @@ func (f *fsm) handleMissingSegments(missingSegments []segments.SegmentMetadata) 
 	return nil
 }
 
-func (f *snapshot) Persist(sink raft.SnapshotSink) error {
+func (s *snapshot) Persist(sink raft.SnapshotSink) error {
 	err := func() error {
 		// Encode data.
-		b, err := f.snapshot.Marshal()
+		b, err := s.snapshot.Marshal()
 		if err != nil {
 			return err
 		}
@@ -188,4 +184,4 @@ func (f *snapshot) Persist(sink raft.SnapshotSink) error {
 	return err
 }
 
-func (f *snapshot) Release() {}
+func (s *snapshot) Release() {}

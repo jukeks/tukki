@@ -54,10 +54,16 @@ func (db *Database) Snapshot() *Snapshot {
 }
 
 type RestoreResult struct {
+	AllSegments     []segments.SegmentMetadata
 	MissingSegments []segments.SegmentMetadata
 }
 
 func (db *Database) Restore(snapshot *Snapshot) (*RestoreResult, error) {
+	// remove current WAL
+	if err := files.RemoveFile(db.dbDir, db.ongoing.WalFilename); err != nil {
+		return nil, fmt.Errorf("failed to remove wal file: %w", err)
+	}
+
 	// overwrite segment journal
 	f, err := files.CreateFile(db.dbDir, segments.SegmentJournalFilename)
 	if err != nil {
@@ -85,7 +91,7 @@ func (db *Database) Restore(snapshot *Snapshot) (*RestoreResult, error) {
 		return nil, errors.New("failed to read current segments")
 	}
 
-	// overwrite current WAL
+	// recreate WAL
 	walBuff := bytes.NewBuffer(snapshot.Wal)
 	f, err = files.CreateFile(db.dbDir, currentSegments.Ongoing.WalFilename)
 	if err != nil {
