@@ -3,8 +3,8 @@ package segments
 import (
 	"io"
 
-	"github.com/jukeks/tukki/internal/journal"
 	"github.com/jukeks/tukki/internal/storage"
+	"github.com/jukeks/tukki/internal/storage/journal"
 	segmentsv1 "github.com/jukeks/tukki/proto/gen/tukki/storage/segments/v1"
 )
 

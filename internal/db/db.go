@@ -5,10 +5,10 @@ import (
 	"log"
 	"sync"
 
-	"github.com/jukeks/tukki/internal/index"
-	"github.com/jukeks/tukki/internal/segmentmembers"
-	"github.com/jukeks/tukki/internal/segments"
+	"github.com/jukeks/tukki/internal/db/segments"
 	"github.com/jukeks/tukki/internal/storage"
+	"github.com/jukeks/tukki/internal/storage/index"
+	"github.com/jukeks/tukki/internal/storage/segmentmembers"
 )
 
 type Database struct {

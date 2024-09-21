@@ -4,8 +4,8 @@ import (
 	"io"
 	"log"
 
-	"github.com/jukeks/tukki/internal/journal"
 	"github.com/jukeks/tukki/internal/storage"
+	"github.com/jukeks/tukki/internal/storage/journal"
 	walv1 "github.com/jukeks/tukki/proto/gen/tukki/storage/wal/v1"
 )
 

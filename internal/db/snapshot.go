@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/jukeks/tukki/internal/segments"
+	"github.com/jukeks/tukki/internal/db/segments"
 	"github.com/jukeks/tukki/internal/storage"
 	snapshotv1 "github.com/jukeks/tukki/proto/gen/tukki/replication/snapshot/v1"
 	"google.golang.org/protobuf/proto"

@@ -5,11 +5,11 @@ import (
 	"log"
 	"os"
 
-	"github.com/jukeks/tukki/internal/index"
-	"github.com/jukeks/tukki/internal/memtable"
-	"github.com/jukeks/tukki/internal/segmentmembers"
-	"github.com/jukeks/tukki/internal/sstable"
 	"github.com/jukeks/tukki/internal/storage"
+	"github.com/jukeks/tukki/internal/storage/index"
+	"github.com/jukeks/tukki/internal/storage/memtable"
+	"github.com/jukeks/tukki/internal/storage/segmentmembers"
+	"github.com/jukeks/tukki/internal/storage/sstable"
 	segmentsv1 "github.com/jukeks/tukki/proto/gen/tukki/storage/segments/v1"
 )
 

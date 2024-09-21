@@ -3,8 +3,8 @@ package memtable_test
 import (
 	"testing"
 
-	"github.com/jukeks/tukki/internal/memtable"
 	"github.com/jukeks/tukki/internal/storage"
+	"github.com/jukeks/tukki/internal/storage/memtable"
 )
 
 func TestWal(t *testing.T) {

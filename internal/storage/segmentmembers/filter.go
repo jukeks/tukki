@@ -5,8 +5,8 @@ import (
 	"os"
 
 	"github.com/bits-and-blooms/bloom/v3"
-	"github.com/jukeks/tukki/internal/keyvalue"
 	"github.com/jukeks/tukki/internal/storage"
+	"github.com/jukeks/tukki/internal/storage/keyvalue"
 )
 
 type SegmentMembers struct {

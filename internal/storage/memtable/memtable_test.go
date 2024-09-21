@@ -3,7 +3,7 @@ package memtable_test
 import (
 	"testing"
 
-	"github.com/jukeks/tukki/internal/memtable"
+	"github.com/jukeks/tukki/internal/storage/memtable"
 	"github.com/thanhpk/randstr"
 )
 

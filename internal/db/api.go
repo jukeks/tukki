@@ -6,9 +6,9 @@ import (
 	"log"
 	"sort"
 
-	"github.com/jukeks/tukki/internal/segments"
-	"github.com/jukeks/tukki/internal/sstable"
+	"github.com/jukeks/tukki/internal/db/segments"
 	"github.com/jukeks/tukki/internal/storage"
+	"github.com/jukeks/tukki/internal/storage/sstable"
 )
 
 var ErrKeyNotFound = errors.New("key not found in segments")

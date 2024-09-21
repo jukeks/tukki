@@ -3,9 +3,9 @@ package sstable
 import (
 	"io"
 
-	"github.com/jukeks/tukki/internal/index"
-	"github.com/jukeks/tukki/internal/keyvalue"
-	"github.com/jukeks/tukki/internal/segmentmembers"
+	"github.com/jukeks/tukki/internal/storage/index"
+	"github.com/jukeks/tukki/internal/storage/keyvalue"
+	"github.com/jukeks/tukki/internal/storage/segmentmembers"
 )
 
 func MergeSSTables(sstableWriter io.Writer, a, b keyvalue.KeyValueIterator,

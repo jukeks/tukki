@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/jukeks/tukki/internal/index"
-	"github.com/jukeks/tukki/internal/keyvalue"
 	"github.com/jukeks/tukki/internal/storage"
+	"github.com/jukeks/tukki/internal/storage/index"
+	"github.com/jukeks/tukki/internal/storage/keyvalue"
 	sstablev1 "github.com/jukeks/tukki/proto/gen/tukki/storage/sstable/v1"
 )
 

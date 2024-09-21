@@ -4,8 +4,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/jukeks/tukki/internal/memtable"
-	"github.com/jukeks/tukki/internal/sstable"
+	"github.com/jukeks/tukki/internal/storage/memtable"
+	"github.com/jukeks/tukki/internal/storage/sstable"
 	testutil "github.com/jukeks/tukki/testutil"
 	"github.com/thanhpk/randstr"
 )

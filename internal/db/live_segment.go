@@ -1,9 +1,9 @@
 package db
 
 import (
-	"github.com/jukeks/tukki/internal/memtable"
-	"github.com/jukeks/tukki/internal/segments"
+	"github.com/jukeks/tukki/internal/db/segments"
 	"github.com/jukeks/tukki/internal/storage"
+	"github.com/jukeks/tukki/internal/storage/memtable"
 )
 
 type LiveSegment struct {

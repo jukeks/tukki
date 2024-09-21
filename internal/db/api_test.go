@@ -3,7 +3,7 @@ package db
 import (
 	"testing"
 
-	"github.com/jukeks/tukki/internal/segments"
+	"github.com/jukeks/tukki/internal/db/segments"
 	"github.com/thanhpk/randstr"
 )
 

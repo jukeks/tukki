@@ -4,7 +4,7 @@ import (
 	"io"
 
 	"github.com/emirpasic/gods/trees/redblacktree"
-	"github.com/jukeks/tukki/internal/keyvalue"
+	"github.com/jukeks/tukki/internal/storage/keyvalue"
 )
 
 type Memtable interface {
