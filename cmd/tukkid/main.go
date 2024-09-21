@@ -8,10 +8,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/jukeks/tukki/cmd/node/replica"
 	"github.com/jukeks/tukki/internal/db"
 	"github.com/jukeks/tukki/internal/grpc/kv"
 	"github.com/jukeks/tukki/internal/grpc/sstable"
+	"github.com/jukeks/tukki/internal/replica"
 	kvv1 "github.com/jukeks/tukki/proto/gen/tukki/rpc/kv/v1"
 	sstablev1 "github.com/jukeks/tukki/proto/gen/tukki/rpc/sstable/v1"
 	"google.golang.org/grpc"
@@ -28,6 +28,7 @@ var (
 	dbDir           = flag.String("db-dir", defaultDatabaseDir(), "The directory to store the database")
 	raftPeerList    = flag.String("raft-peers", "", "The Raft peers")
 	sstablePeerList = flag.String("sstable-peers", "", "The SSTable peers")
+	inititialize    = flag.Bool("init", false, "Initialize the database")
 )
 
 func parsePeers(peers string) ([]replica.Peer, error) {
@@ -65,31 +66,19 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to sstable parse peers: %v", err)
 	}
-	/*
-		var raftPeers []node.Peer
-		if *raftPeerList != "" {
-			raftPeers, err = parsePeers(*raftPeerList)
-			if err != nil {
-				log.Fatalf("failed to raft parse peers: %v", err)
-			}
-		}*/
 
-	n := replica.New(false, sstablePeers, db, *dbDir, *dbDir, fmt.Sprintf("localhost:%d", *raftPort))
-	if err := n.Open(*raftPeerList != "", *nodeId); err != nil {
-		log.Fatalf("failed to open node: %v", err)
+	var raftPeers []replica.Peer
+	if *raftPeerList != "" {
+		raftPeers, err = parsePeers(*raftPeerList)
+		if err != nil {
+			log.Fatalf("failed to raft parse peers: %v", err)
+		}
 	}
 
-	go func() {
-		/*
-			time.Sleep(5 * time.Second)
-			if *raftPeerList != "" {
-				for _, peer := range raftPeers {
-					if err := n.Join(peer.Id, peer.Addr); err != nil {
-						log.Fatalf("failed to join peer: %v", err)
-					}
-				}
-			}*/
-	}()
+	n := replica.New(false, sstablePeers, db, *dbDir, *dbDir, fmt.Sprintf("localhost:%d", *raftPort))
+	if err := n.Open(*nodeId, *inititialize, raftPeers); err != nil {
+		log.Fatalf("failed to open node: %v", err)
+	}
 
 	kvServer := kv.NewKVServer(n)
 	sstableServer := sstable.NewSstableServer(db)
