@@ -3,7 +3,7 @@ package segments
 import (
 	"fmt"
 
-	"github.com/jukeks/tukki/internal/storage"
+	"github.com/jukeks/tukki/internal/storage/files"
 	"github.com/jukeks/tukki/internal/storage/index"
 	"github.com/jukeks/tukki/internal/storage/segmentmembers"
 	"github.com/jukeks/tukki/internal/storage/sstable"
@@ -79,19 +79,19 @@ func getEstimatedElementCount(dbDir string, segments []SegmentMetadata) (uint, e
 }
 
 func (o *MergeSegmentsOperation) Execute() error {
-	mergedFile, err := storage.CreateFile(o.dbDir, o.mergedSegment.SegmentFile)
+	mergedFile, err := files.CreateFile(o.dbDir, o.mergedSegment.SegmentFile)
 	if err != nil {
 		return fmt.Errorf("failed to create merged segment file: %w", err)
 	}
 
-	aFile, err := storage.OpenFile(o.dbDir, o.segmentsToMerge[0].SegmentFile)
+	aFile, err := files.OpenFile(o.dbDir, o.segmentsToMerge[0].SegmentFile)
 	if err != nil {
 		return fmt.Errorf("failed to open a segment file: %w", err)
 	}
 	defer aFile.Close()
 	aReader := sstable.NewSSTableReader(aFile)
 
-	bFile, err := storage.OpenFile(o.dbDir, o.segmentsToMerge[1].SegmentFile)
+	bFile, err := files.OpenFile(o.dbDir, o.segmentsToMerge[1].SegmentFile)
 	if err != nil {
 		return fmt.Errorf("failed to open b segment file: %w", err)
 	}
@@ -104,7 +104,7 @@ func (o *MergeSegmentsOperation) Execute() error {
 	}
 	members := segmentmembers.NewSegmentMembers(totalMembers)
 
-	indexFile, err := storage.CreateFile(o.dbDir, o.mergedSegment.IndexFile)
+	indexFile, err := files.CreateFile(o.dbDir, o.mergedSegment.IndexFile)
 	if err != nil {
 		return fmt.Errorf("failed to create index file: %w", err)
 	}

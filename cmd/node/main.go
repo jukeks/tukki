@@ -1,17 +1,17 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"log"
 	"net"
 	"os"
 	"strings"
-	"sync"
 
-	"github.com/jukeks/tukki/cmd/node/node"
+	"github.com/jukeks/tukki/cmd/node/replica"
 	"github.com/jukeks/tukki/internal/db"
+	"github.com/jukeks/tukki/internal/grpc/kv"
+	"github.com/jukeks/tukki/internal/grpc/sstable"
 	kvv1 "github.com/jukeks/tukki/proto/gen/tukki/rpc/kv/v1"
 	sstablev1 "github.com/jukeks/tukki/proto/gen/tukki/rpc/sstable/v1"
 	"google.golang.org/grpc"
@@ -30,15 +30,15 @@ var (
 	sstablePeerList = flag.String("sstable-peers", "", "The SSTable peers")
 )
 
-func parsePeers(peers string) ([]node.Peer, error) {
+func parsePeers(peers string) ([]replica.Peer, error) {
 	peerList := strings.Split(peers, ",")
-	result := make([]node.Peer, 0, len(peerList))
+	result := make([]replica.Peer, 0, len(peerList))
 	for _, peer := range peerList {
 		components := strings.Split(peer, "@")
 		if len(components) != 2 {
 			return nil, fmt.Errorf("invalid peer: %s", peer)
 		}
-		result = append(result, node.Peer{Id: components[0], Addr: components[1]})
+		result = append(result, replica.Peer{Id: components[0], Addr: components[1]})
 	}
 	return result, nil
 }
@@ -74,7 +74,7 @@ func main() {
 			}
 		}*/
 
-	n := node.New(false, sstablePeers, db, *dbDir, *dbDir, fmt.Sprintf("localhost:%d", *raftPort))
+	n := replica.New(false, sstablePeers, db, *dbDir, *dbDir, fmt.Sprintf("localhost:%d", *raftPort))
 	if err := n.Open(*raftPeerList != "", *nodeId); err != nil {
 		log.Fatalf("failed to open node: %v", err)
 	}
@@ -91,52 +91,12 @@ func main() {
 			}*/
 	}()
 
-	kvServer := NewKvServer(n)
-	sstableServer := node.NewSstableServer(*dbDir, db)
+	kvServer := kv.NewKVServer(n)
+	sstableServer := sstable.NewSstableServer(db)
 
 	grpcServer := grpc.NewServer()
 	kvv1.RegisterKvServiceServer(grpcServer, kvServer)
 	sstablev1.RegisterSstableServiceServer(grpcServer, sstableServer)
 
 	grpcServer.Serve(ls)
-}
-
-type kvServer struct {
-	kvv1.UnimplementedKvServiceServer
-	lock sync.RWMutex
-	node *node.Node
-}
-
-func NewKvServer(node *node.Node) *kvServer {
-	return &kvServer{node: node}
-}
-
-func (s *kvServer) Query(ctx context.Context, req *kvv1.QueryRequest) (*kvv1.QueryResponse, error) {
-	value, err := s.node.Get(req.Key)
-	if err != nil {
-		return nil, err
-	}
-
-	return &kvv1.QueryResponse{Value: &kvv1.QueryResponse_Pair{Pair: &kvv1.KvPair{
-		Key:   req.Key,
-		Value: value,
-	}}}, nil
-}
-
-func (s *kvServer) Set(ctx context.Context, req *kvv1.SetRequest) (*kvv1.SetResponse, error) {
-	err := s.node.Set(req.Pair.Key, req.Pair.Value)
-	if err != nil {
-		return nil, err
-	}
-
-	return &kvv1.SetResponse{}, nil
-}
-
-func (s *kvServer) Delete(ctx context.Context, req *kvv1.DeleteRequest) (*kvv1.DeleteResponse, error) {
-	err := s.node.Delete(req.Key)
-	if err != nil {
-		return nil, err
-	}
-
-	return &kvv1.DeleteResponse{}, nil
 }

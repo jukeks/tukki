@@ -3,13 +3,13 @@ package memtable_test
 import (
 	"testing"
 
-	"github.com/jukeks/tukki/internal/storage"
+	"github.com/jukeks/tukki/internal/storage/files"
 	"github.com/jukeks/tukki/internal/storage/memtable"
 )
 
 func TestWal(t *testing.T) {
 	dbDir := t.TempDir()
-	filename := storage.Filename("wal")
+	filename := files.Filename("wal")
 	mt := memtable.NewMemtable()
 	wal, err := memtable.OpenWal(dbDir, filename, mt)
 	if err != nil {

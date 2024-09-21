@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/jukeks/tukki/internal/storage"
+	"github.com/jukeks/tukki/internal/storage/files"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
@@ -35,10 +35,10 @@ type Journal struct {
 
 type ExistingJournalHandler func(r *JournalReader) error
 
-func OpenJournal(dbDir string, journalName storage.Filename, writemode WriteMode,
+func OpenJournal(dbDir string, journalName files.Filename, writemode WriteMode,
 	existingHandler ExistingJournalHandler) (*Journal, error) {
 
-	journalPath := storage.GetPath(dbDir, journalName)
+	journalPath := files.GetPath(dbDir, journalName)
 
 	var journalFile *os.File
 	var journalCopy []byte

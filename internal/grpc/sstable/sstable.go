@@ -4,7 +4,7 @@ import (
 	"io"
 
 	"github.com/jukeks/tukki/internal/db"
-	"github.com/jukeks/tukki/internal/db/segments"
+	"github.com/jukeks/tukki/internal/storage/segments"
 	sstablev1 "github.com/jukeks/tukki/proto/gen/tukki/rpc/sstable/v1"
 )
 

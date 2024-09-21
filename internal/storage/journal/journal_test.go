@@ -7,7 +7,7 @@ import (
 
 	"github.com/thanhpk/randstr"
 
-	"github.com/jukeks/tukki/internal/storage"
+	"github.com/jukeks/tukki/internal/storage/files"
 	testutil "github.com/jukeks/tukki/testutil"
 
 	walv1 "github.com/jukeks/tukki/proto/gen/tukki/storage/wal/v1"
@@ -55,7 +55,7 @@ func TestJournalWriter(t *testing.T) {
 
 func TestOpenJournal(t *testing.T) {
 	dbDir := t.TempDir()
-	filename := storage.Filename(randstr.String(10))
+	filename := files.Filename(randstr.String(10))
 
 	j, err := OpenJournal(dbDir, filename, WriteModeSync, func(r *JournalReader) error {
 		return nil
@@ -135,7 +135,7 @@ func TestJournalWriterSnapshotAsync(t *testing.T) {
 
 func testJournalWriterSnapshot(t *testing.T, writeMode WriteMode) {
 	dbDir := t.TempDir()
-	filename := storage.Filename(randstr.String(10))
+	filename := files.Filename(randstr.String(10))
 
 	j, err := OpenJournal(dbDir, filename, writeMode, func(r *JournalReader) error {
 		return nil
@@ -162,8 +162,8 @@ func testJournalWriterSnapshot(t *testing.T, writeMode WriteMode) {
 
 	j.Close()
 
-	filename2 := storage.Filename(randstr.String(10))
-	f, err := storage.CreateFile(dbDir, filename2)
+	filename2 := files.Filename(randstr.String(10))
+	f, err := files.CreateFile(dbDir, filename2)
 	if err != nil {
 		t.Fatalf("failed to create file: %v", err)
 	}

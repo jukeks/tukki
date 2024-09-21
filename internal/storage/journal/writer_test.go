@@ -3,14 +3,14 @@ package journal
 import (
 	"testing"
 
-	"github.com/jukeks/tukki/internal/storage"
+	"github.com/jukeks/tukki/internal/storage/files"
 	walv1 "github.com/jukeks/tukki/proto/gen/tukki/storage/wal/v1"
 	"github.com/thanhpk/randstr"
 )
 
 func BenchmarkSyncWriter(b *testing.B) {
 	dbDir := b.TempDir()
-	filename := storage.Filename("journal")
+	filename := files.Filename("journal")
 	j, err := OpenJournal(dbDir, filename, WriteModeSync, func(r *JournalReader) error {
 		return nil
 	})
@@ -40,7 +40,7 @@ func BenchmarkSyncWriter(b *testing.B) {
 
 func BenchmarkAsyncWriter(b *testing.B) {
 	dbDir := b.TempDir()
-	filename := storage.Filename("journal")
+	filename := files.Filename("journal")
 	j, err := OpenJournal(dbDir, filename, WriteModeAsync, func(r *JournalReader) error {
 		return nil
 	})

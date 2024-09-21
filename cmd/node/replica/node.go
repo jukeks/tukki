@@ -1,4 +1,4 @@
-package node
+package replica
 
 import (
 	"bufio"
@@ -20,9 +20,9 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/jukeks/tukki/internal/db"
-	"github.com/jukeks/tukki/internal/keyvalue"
-	"github.com/jukeks/tukki/internal/sstable"
-	"github.com/jukeks/tukki/internal/storage"
+	"github.com/jukeks/tukki/internal/storage/files"
+	"github.com/jukeks/tukki/internal/storage/keyvalue"
+	"github.com/jukeks/tukki/internal/storage/sstable"
 )
 
 const (
@@ -297,7 +297,11 @@ func (f *fsm) Restore(rc io.ReadCloser) error {
 					log.Fatalf("can not get sstable from server %v", err)
 				}
 
-				f, err := storage.CreateFile(f.dbDir, segment.SegmentFile)
+				f, err := files.CreateFile(f.dbDir, segment.SegmentFile)
+				if err != nil {
+					return fmt.Errorf("can not create file %w", err)
+				}
+
 				bw := bufio.NewWriter(f)
 				writer := sstable.NewSSTableWriter(bw)
 				for {
@@ -306,7 +310,7 @@ func (f *fsm) Restore(rc io.ReadCloser) error {
 						break
 					}
 					if err != nil {
-						log.Fatalf("can not receive sstable from server %v", err)
+						return fmt.Errorf("can not receive sstable from server %w", err)
 					}
 					_, err = writer.Write(keyvalue.IteratorEntry{
 						Key:     resp.Record.Key,
@@ -314,14 +318,14 @@ func (f *fsm) Restore(rc io.ReadCloser) error {
 						Deleted: resp.Record.Deleted,
 					})
 					if err != nil {
-						fmt.Errorf("can not add segment to db: %w", err)
+						return fmt.Errorf("can not add segment to db: %w", err)
 					}
 				}
 				if err := bw.Flush(); err != nil {
-					fmt.Errorf("can not flush writer %w", err)
+					return fmt.Errorf("can not flush writer %w", err)
 				}
 				if err := f.Close(); err != nil {
-					fmt.Errorf("can not close file %w", err)
+					return fmt.Errorf("can not close file %w", err)
 				}
 
 				// TODO members and indexes

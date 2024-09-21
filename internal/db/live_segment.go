@@ -1,13 +1,13 @@
 package db
 
 import (
-	"github.com/jukeks/tukki/internal/db/segments"
-	"github.com/jukeks/tukki/internal/storage"
+	"github.com/jukeks/tukki/internal/storage/files"
 	"github.com/jukeks/tukki/internal/storage/memtable"
+	"github.com/jukeks/tukki/internal/storage/segments"
 )
 
 type LiveSegment struct {
-	WalFilename storage.Filename
+	WalFilename files.Filename
 	Segment     segments.SegmentMetadata
 	Memtable    memtable.Memtable
 	Wal         *memtable.Wal

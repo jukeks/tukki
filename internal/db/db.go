@@ -5,10 +5,10 @@ import (
 	"log"
 	"sync"
 
-	"github.com/jukeks/tukki/internal/db/segments"
-	"github.com/jukeks/tukki/internal/storage"
+	"github.com/jukeks/tukki/internal/storage/files"
 	"github.com/jukeks/tukki/internal/storage/index"
 	"github.com/jukeks/tukki/internal/storage/segmentmembers"
+	"github.com/jukeks/tukki/internal/storage/segments"
 )
 
 type Database struct {
@@ -95,32 +95,32 @@ func OpenDatabase(dbDir string) (*Database, error) {
 	return db, nil
 }
 
-func getWalFilename(id segments.SegmentId) storage.Filename {
-	return storage.Filename(fmt.Sprintf("wal-%d.journal", id))
+func getWalFilename(id segments.SegmentId) files.Filename {
+	return files.Filename(fmt.Sprintf("wal-%d.journal", id))
 }
 
-func getSegmentFilename(id segments.SegmentId) storage.Filename {
-	return storage.Filename(fmt.Sprintf("segment-%d", id))
+func getSegmentFilename(id segments.SegmentId) files.Filename {
+	return files.Filename(fmt.Sprintf("segment-%d", id))
 }
 
-func getMergedSegmentFilename(a, b segments.SegmentId) storage.Filename {
-	return storage.Filename(fmt.Sprintf("segment-%d-%d", a, b))
+func getMergedSegmentFilename(a, b segments.SegmentId) files.Filename {
+	return files.Filename(fmt.Sprintf("segment-%d-%d", a, b))
 }
 
-func getMembersFilename(id segments.SegmentId) storage.Filename {
-	return storage.Filename(fmt.Sprintf("members-%d", id))
+func getMembersFilename(id segments.SegmentId) files.Filename {
+	return files.Filename(fmt.Sprintf("members-%d", id))
 }
 
-func getMergedMembersFilename(a, b segments.SegmentId) storage.Filename {
-	return storage.Filename(fmt.Sprintf("members-%d-%d", a, b))
+func getMergedMembersFilename(a, b segments.SegmentId) files.Filename {
+	return files.Filename(fmt.Sprintf("members-%d-%d", a, b))
 }
 
-func getIndexFilename(id segments.SegmentId) storage.Filename {
-	return storage.Filename(fmt.Sprintf("index-%d", id))
+func getIndexFilename(id segments.SegmentId) files.Filename {
+	return files.Filename(fmt.Sprintf("index-%d", id))
 }
 
-func getMergedIndexFilename(a, b segments.SegmentId) storage.Filename {
-	return storage.Filename(fmt.Sprintf("index-%d-%d", a, b))
+func getMergedIndexFilename(a, b segments.SegmentId) files.Filename {
+	return files.Filename(fmt.Sprintf("index-%d-%d", a, b))
 }
 
 func (db *Database) GetOnGoingSegment() *LiveSegment {

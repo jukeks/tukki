@@ -4,7 +4,8 @@ import (
 	"bufio"
 	"io"
 
-	"github.com/jukeks/tukki/internal/storage"
+	"github.com/jukeks/tukki/internal/storage/files"
+	"github.com/jukeks/tukki/internal/storage/marshalling"
 	indexv1 "github.com/jukeks/tukki/proto/gen/tukki/storage/index/v1"
 )
 
@@ -12,8 +13,8 @@ type Index struct {
 	Entries map[string]uint64
 }
 
-func OpenIndex(dbDir string, filename storage.Filename) (*Index, error) {
-	f, err := storage.OpenFile(dbDir, filename)
+func OpenIndex(dbDir string, filename files.Filename) (*Index, error) {
+	f, err := files.OpenFile(dbDir, filename)
 	if err != nil {
 		return nil, err
 	}
@@ -23,7 +24,7 @@ func OpenIndex(dbDir string, filename storage.Filename) (*Index, error) {
 	entries := make(map[string]uint64)
 	for {
 		var record indexv1.IndexEntry
-		err := storage.ReadLengthPrefixedProtobufMessage(reader, &record)
+		err := marshalling.ReadLengthPrefixedProtobufMessage(reader, &record)
 		if err != nil {
 			if err == io.EOF {
 				break
@@ -63,7 +64,7 @@ func (w *IndexWriter) WriteFromOffsets(offsets OffsetMap) error {
 			Key:    key,
 			Offset: offset,
 		}
-		_, err := storage.WriteLengthPrefixedProtobufMessage(bw, &record)
+		_, err := marshalling.WriteLengthPrefixedProtobufMessage(bw, &record)
 		if err != nil {
 			return err
 		}

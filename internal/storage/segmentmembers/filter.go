@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/bits-and-blooms/bloom/v3"
-	"github.com/jukeks/tukki/internal/storage"
+	"github.com/jukeks/tukki/internal/storage/files"
 	"github.com/jukeks/tukki/internal/storage/keyvalue"
 )
 
@@ -19,8 +19,8 @@ func NewSegmentMembers(n uint) *SegmentMembers {
 	}
 }
 
-func OpenSegmentMembers(dbDir string, filename storage.Filename) (*SegmentMembers, error) {
-	path := storage.GetPath(dbDir, filename)
+func OpenSegmentMembers(dbDir string, filename files.Filename) (*SegmentMembers, error) {
+	path := files.GetPath(dbDir, filename)
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -38,8 +38,8 @@ func OpenSegmentMembers(dbDir string, filename storage.Filename) (*SegmentMember
 	}, nil
 }
 
-func (sb *SegmentMembers) Save(dbDir string, filename storage.Filename) error {
-	f, err := storage.CreateFile(dbDir, filename)
+func (sb *SegmentMembers) Save(dbDir string, filename files.Filename) error {
+	f, err := files.CreateFile(dbDir, filename)
 	if err != nil {
 		return err
 	}

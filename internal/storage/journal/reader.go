@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/jukeks/tukki/internal/storage"
+	"github.com/jukeks/tukki/internal/storage/marshalling"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
@@ -18,7 +18,7 @@ func NewJournalReader(r io.Reader) *JournalReader {
 }
 
 func (j *JournalReader) Read(journalEntry protoreflect.ProtoMessage) error {
-	err := storage.ReadLengthPrefixedProtobufMessage(j.r, journalEntry)
+	err := marshalling.ReadLengthPrefixedProtobufMessage(j.r, journalEntry)
 	if err != nil {
 		if err == io.EOF {
 			return io.EOF

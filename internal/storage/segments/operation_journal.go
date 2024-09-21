@@ -3,7 +3,7 @@ package segments
 import (
 	"io"
 
-	"github.com/jukeks/tukki/internal/storage"
+	"github.com/jukeks/tukki/internal/storage/files"
 	"github.com/jukeks/tukki/internal/storage/journal"
 	segmentsv1 "github.com/jukeks/tukki/proto/gen/tukki/storage/segments/v1"
 )
@@ -93,9 +93,9 @@ func readOperationJournal(r *journal.JournalReader) (
 func pbToSegmentMetadata(segmentPb *segmentsv1.Segment) *SegmentMetadata {
 	return &SegmentMetadata{
 		Id:          SegmentId(segmentPb.Id),
-		SegmentFile: storage.Filename(segmentPb.Filename),
-		MembersFile: storage.Filename(segmentPb.MembersFilename),
-		IndexFile:   storage.Filename(segmentPb.IndexFilename),
+		SegmentFile: files.Filename(segmentPb.Filename),
+		MembersFile: files.Filename(segmentPb.MembersFilename),
+		IndexFile:   files.Filename(segmentPb.IndexFilename),
 	}
 }
 
@@ -116,7 +116,7 @@ func segmentOperationFromProto(proto *segmentsv1.SegmentOperation) SegmentOperat
 		var completingSegment *OpenSegment
 		if completingSegmentPb != nil {
 			completingSegment = &OpenSegment{
-				WalFilename: storage.Filename(completingSegmentPb.WalFilename),
+				WalFilename: files.Filename(completingSegmentPb.WalFilename),
 				Segment:     *pbToSegmentMetadata(completingSegmentPb.Segment),
 			}
 		}
@@ -125,7 +125,7 @@ func segmentOperationFromProto(proto *segmentsv1.SegmentOperation) SegmentOperat
 			id:                OperationId(proto.Id),
 			completingSegment: completingSegment,
 			newSegment: &OpenSegment{
-				WalFilename: storage.Filename(newSegmentPb.WalFilename),
+				WalFilename: files.Filename(newSegmentPb.WalFilename),
 				Segment:     *pbToSegmentMetadata(newSegmentPb.Segment),
 			},
 		}

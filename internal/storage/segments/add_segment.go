@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/jukeks/tukki/internal/storage"
+	"github.com/jukeks/tukki/internal/storage/files"
 	"github.com/jukeks/tukki/internal/storage/index"
 	"github.com/jukeks/tukki/internal/storage/memtable"
 	"github.com/jukeks/tukki/internal/storage/segmentmembers"
@@ -15,7 +15,7 @@ import (
 
 type OpenSegment struct {
 	Segment     SegmentMetadata
-	WalFilename storage.Filename
+	WalFilename files.Filename
 	Memtable    memtable.Memtable
 }
 
@@ -85,13 +85,13 @@ func (o *AddSegmentOperation) Execute() error {
 	if o.completingSegment != nil {
 		completingSegment := o.completingSegment
 		// write completing segment to disk
-		f, err := storage.CreateFile(o.dbDir, completingSegment.Segment.SegmentFile)
+		f, err := files.CreateFile(o.dbDir, completingSegment.Segment.SegmentFile)
 		if err != nil {
 			log.Printf("failed to create file: %v", err)
 			return err
 		}
 
-		indexF, err := storage.CreateFile(o.dbDir, completingSegment.Segment.IndexFile)
+		indexF, err := files.CreateFile(o.dbDir, completingSegment.Segment.IndexFile)
 		if err != nil {
 			return fmt.Errorf("failed to create index file: %w", err)
 		}
@@ -116,7 +116,7 @@ func (o *AddSegmentOperation) Execute() error {
 		}
 
 		// remove completing wal
-		path := storage.GetPath(o.dbDir, completingSegment.WalFilename)
+		path := files.GetPath(o.dbDir, completingSegment.WalFilename)
 		err = os.Remove(path)
 		if err != nil {
 			log.Printf("failed to remove file: %v", err)

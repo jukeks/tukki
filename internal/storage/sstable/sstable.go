@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/jukeks/tukki/internal/storage"
 	"github.com/jukeks/tukki/internal/storage/index"
 	"github.com/jukeks/tukki/internal/storage/keyvalue"
+	"github.com/jukeks/tukki/internal/storage/marshalling"
 	sstablev1 "github.com/jukeks/tukki/proto/gen/tukki/storage/sstable/v1"
 )
 
@@ -29,7 +29,7 @@ func (w *SSTableWriter) Write(entry keyvalue.IteratorEntry) (uint32, error) {
 		Value:   entry.Value,
 		Deleted: entry.Deleted,
 	}
-	return storage.WriteLengthPrefixedProtobufMessage(w.writer, &record)
+	return marshalling.WriteLengthPrefixedProtobufMessage(w.writer, &record)
 }
 
 func (w *SSTableWriter) WriteFromIterator(iterator keyvalue.KeyValueIterator) error {
@@ -69,7 +69,7 @@ func NewSSTableReader(reader io.Reader) *SSTableReader {
 
 func (i *SSTableReader) Next() (keyvalue.IteratorEntry, error) {
 	var record sstablev1.SSTableRecord
-	err := storage.ReadLengthPrefixedProtobufMessage(i.reader, &record)
+	err := marshalling.ReadLengthPrefixedProtobufMessage(i.reader, &record)
 	if err != nil {
 		return keyvalue.IteratorEntry{}, err
 	}
@@ -98,7 +98,7 @@ func (r *SSTableSeeker) ReadAt(offset uint64) (keyvalue.IteratorEntry, error) {
 	}
 
 	var record sstablev1.SSTableRecord
-	err = storage.ReadLengthPrefixedProtobufMessage(r.reader, &record)
+	err = marshalling.ReadLengthPrefixedProtobufMessage(r.reader, &record)
 	if err != nil {
 		return keyvalue.IteratorEntry{}, err
 	}

@@ -1,4 +1,4 @@
-package storage
+package marshalling
 
 import (
 	"encoding/binary"

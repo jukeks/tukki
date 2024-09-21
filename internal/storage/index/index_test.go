@@ -3,20 +3,20 @@ package index
 import (
 	"testing"
 
-	"github.com/jukeks/tukki/internal/storage"
+	"github.com/jukeks/tukki/internal/storage/files"
 	"github.com/thanhpk/randstr"
 )
 
 func TestIndex(t *testing.T) {
 	dbDir := t.TempDir()
-	filename := storage.Filename(randstr.String(10))
+	filename := files.Filename(randstr.String(10))
 
 	entries := make(OffsetMap)
 	entries["key1"] = 0
 	entries["key2"] = 1
 	entries["key3"] = 2
 
-	f, err := storage.CreateFile(dbDir, filename)
+	f, err := files.CreateFile(dbDir, filename)
 	if err != nil {
 		t.Fatal(err)
 	}

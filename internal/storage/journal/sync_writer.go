@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/jukeks/tukki/internal/storage"
+	"github.com/jukeks/tukki/internal/storage/marshalling"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
@@ -24,12 +24,12 @@ func NewSynchronousJournalWriter(w WriteSyncer, head []byte) *SynchronousJournal
 }
 
 func (j *SynchronousJournalWriter) Write(journalEntry protoreflect.ProtoMessage) error {
-	_, err := storage.WriteLengthPrefixedProtobufMessage(j.journalCopy, journalEntry)
+	_, err := marshalling.WriteLengthPrefixedProtobufMessage(j.journalCopy, journalEntry)
 	if err != nil {
 		return fmt.Errorf("failed to write journal entry to copy: %w", err)
 	}
 
-	_, err = storage.WriteLengthPrefixedProtobufMessage(j.b, journalEntry)
+	_, err = marshalling.WriteLengthPrefixedProtobufMessage(j.b, journalEntry)
 	if err != nil {
 		return fmt.Errorf("failed to write journal entry: %w", err)
 	}

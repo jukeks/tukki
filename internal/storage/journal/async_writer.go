@@ -7,7 +7,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/jukeks/tukki/internal/storage"
+	"github.com/jukeks/tukki/internal/storage/marshalling"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
@@ -50,7 +50,7 @@ func (j *AsynchronousJournalWriter) Write(journalEntry protoreflect.ProtoMessage
 		return err
 	}
 
-	_, err = storage.WriteLengthPrefixedProtobufMessage(j.journalCopy, journalEntry)
+	_, err = marshalling.WriteLengthPrefixedProtobufMessage(j.journalCopy, journalEntry)
 	if err != nil {
 		return fmt.Errorf("failed to write journal entry to copy: %w", err)
 	}
@@ -113,7 +113,7 @@ messagesAvailable:
 	for {
 		select {
 		case msg := <-j.writeBuff:
-			_, err := storage.WriteLengthPrefixedProtobufMessage(j.b, msg)
+			_, err := marshalling.WriteLengthPrefixedProtobufMessage(j.b, msg)
 			if err != nil {
 				return fmt.Errorf("failed to write journal entry: %w", err)
 			}
