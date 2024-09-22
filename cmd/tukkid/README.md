@@ -10,12 +10,10 @@ The most important configuration options are:
 ```bash
 $ ./bin/tukkid --help
 Usage of ./bin/tukkid:
-  -db-dir string
-    	The directory to store the database (default "./tukki-db")
-  -init
-    	Initialize the database
   -node-id string
     	The node ID (default "node1")
+  -db-dir string
+    	The directory to store the database (default "./tukki-db")
   -port int
     	The server port (default 50051)
   -raft-port int
@@ -24,15 +22,17 @@ Usage of ./bin/tukkid:
     	The Raft peers. Only relevant when initializing.
   -sstable-peers string
     	The SSTable peers. Used to sync segments on restore.
+  -init
+    	Initialize the database
 ```
 
 When initializing a tukki cluster, a node should be started with:
 ```bash
 ./bin/tukkid \
-    -port 50010 \
     -node-id 1 \
-    -raft-port 50011 \
     -db-dir ./node-1 \
+    -port 50010 \
+    -raft-port 50011 \
     -raft-peers 2@localhost:50021,3@localhost:50031 \
     -sstable-peers 2@localhost:50020,3@localhost:50030 \
     -init
@@ -42,18 +42,18 @@ And rest two nodes with
 
 ```bash
 ./bin/tukkid \
-    -port 50020 \
     -node-id 2 \
-    -raft-port 50021 \
     -db-dir ./node-2 \
+    -port 50020 \
+    -raft-port 50021 \
     -sstable-peers 1@localhost:50010,3@localhost:50030
 ```
 and
 ```bash
 ./bin/tukkid \
-    -port 50030 \
     -node-id 3 \
-    -raft-port 50031 \
     -db-dir ./node-3 \
+    -port 50030 \
+    -raft-port 50031 \
     -sstable-peers 2@localhost:50020,1@localhost:50010
 ```
