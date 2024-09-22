@@ -2,10 +2,13 @@
 
 # tukki
 
-A toy key-value store built to explore log-structured merge-tree (LSM tree) 
-concepts.
+A toy distributed key-value store built to explore log-structured merge-tree (LSM tree) and replication concepts.
 
 <br />
+
+> [!WARNING]
+> This is a toy database not fit for production use. It will eat your data.
+
 
 ## Operations
 
@@ -27,6 +30,8 @@ $ make build
 
 ### Server
 
+Single node server can be run as
+
 ```bash
 $ ./bin/server --help
 Usage of ./bin/server:
@@ -41,6 +46,8 @@ $ ./bin/server
 2024/09/15 13:17:40 journal file exists tukki-db/wal-0.journal, reading journal
 2024/09/15 13:17:40 opening journal for appending
 ```
+
+For multi-node setup see [tukkid](./cmd/tukkid).
 
 ### Client
 
@@ -75,6 +82,13 @@ service KvService {
 ```
 
 The complete protocol can be seen in [tukki.rpc](proto/tukki/rpc/).
+
+
+## Replication
+
+tukki currently uses Hashicorp's [Raft](https://github.com/hashicorp/raft) library of [Raft Consensus Algorithm](https://raft.github.io/) for concensus and replication.
+
+The current storage backend for Raft needs is [raft-mdb](https://github.com/hashicorp/raft-mdb), but the goal is to eventually use tukki itself for all storage needs.
 
 ## Database structures
 
@@ -172,3 +186,6 @@ Segment journal records creation of new segments and merging existing segments.
 Segment journal is read at startup to find all segments and possible incomplete
 operations.
 
+### Segment merging
+
+Segment merging is not yet implemented.
