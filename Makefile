@@ -13,7 +13,10 @@ test:
 build:
 	go build -v -o ./bin/server ./cmd/server
 	go build -v -o ./bin/client ./cmd/client
-	go build -v -o ./bin/tukkid ./cmd/tukkid
+
+	go build -v -o ./bin/tukkid-bin ./cmd/tukkid
+	cp ./cmd/tukkid/tukkid.sh ./bin/tukkid
+
 	go build -v -o ./bin/test/csvdumper ./cmd/test/csvdumper
 
 format:

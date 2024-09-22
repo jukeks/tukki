@@ -6,12 +6,11 @@ import (
 	"log"
 	"net"
 	"os"
-	"path/filepath"
 	"sync"
 	"time"
 
 	"github.com/hashicorp/raft"
-	raftboltdb "github.com/hashicorp/raft-boltdb/v2"
+	raftboltdb "github.com/hashicorp/raft-mdb"
 
 	"github.com/jukeks/tukki/internal/db"
 )
@@ -19,6 +18,7 @@ import (
 const (
 	retainSnapshotCount = 2
 	raftTimeout         = 10 * time.Second
+	maxMdbSize          = 64 * 1024 * 1024 * 1024
 )
 
 type command struct {
@@ -91,14 +91,12 @@ func (n *Node) Open(localID string, enableSingle bool, peers []Peer) error {
 		logStore = raft.NewInmemStore()
 		stableStore = raft.NewInmemStore()
 	} else {
-		boltDB, err := raftboltdb.New(raftboltdb.Options{
-			Path: filepath.Join(n.RaftDir, "raft.db"),
-		})
+		mdbStore, err := raftboltdb.NewMDBStoreWithSize(n.RaftDir, maxMdbSize)
 		if err != nil {
-			return fmt.Errorf("new bbolt store: %s", err)
+			return fmt.Errorf("failed to create mdb store: %w", err)
 		}
-		logStore = boltDB
-		stableStore = boltDB
+		logStore = mdbStore
+		stableStore = mdbStore
 	}
 
 	// Instantiate the Raft systems.
