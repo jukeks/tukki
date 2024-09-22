@@ -22,13 +22,16 @@ func defaultDatabaseDir() string {
 }
 
 var (
-	port            = flag.Int("port", 50051, "The server port")
-	raftPort        = flag.Int("raft-port", 50000, "The Raft server port")
-	nodeId          = flag.String("node-id", "node1", "The node ID")
-	dbDir           = flag.String("db-dir", defaultDatabaseDir(), "The directory to store the database")
-	raftPeerList    = flag.String("raft-peers", "", "The Raft peers")
-	sstablePeerList = flag.String("sstable-peers", "", "The SSTable peers")
-	inititialize    = flag.Bool("init", false, "Initialize the database")
+	port     = flag.Int("port", 50051, "The server port")
+	raftPort = flag.Int("raft-port", 50000, "The Raft server port")
+	nodeId   = flag.String("node-id", "node1", "The node ID")
+	dbDir    = flag.String("db-dir", defaultDatabaseDir(),
+		"The directory to store the database")
+	raftPeerList = flag.String("raft-peers", "",
+		"The Raft peers. Only relevant when initializing")
+	sstablePeerList = flag.String("sstable-peers", "",
+		"The SSTable peers. Used to sync missing segments. Should have the server port.")
+	inititialize = flag.Bool("init", false, "Initialize the database")
 )
 
 func parsePeers(peers string) ([]replica.Peer, error) {
