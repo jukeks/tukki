@@ -9,8 +9,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dgraph-io/badger/v3"
 	"github.com/hashicorp/raft"
-	raftboltdb "github.com/hashicorp/raft-mdb"
+
+	raftbadger "github.com/rfyiamcool/raft-badger"
 
 	"github.com/jukeks/tukki/internal/db"
 )
@@ -91,18 +93,27 @@ func (n *Node) Open(localID string, enableSingle bool, peers []Peer) error {
 		logStore = raft.NewInmemStore()
 		stableStore = raft.NewInmemStore()
 	} else {
-		mdbStore, err := raftboltdb.NewMDBStoreWithSize(n.RaftDir, maxMdbSize)
-		if err != nil {
-			return fmt.Errorf("failed to create mdb store: %w", err)
+		cfg := raftbadger.Config{
+			DataPath:      n.RaftDir,
+			Compression:   "zstd", // zstd, snappy
+			DisableLogger: false,
 		}
-		logStore = mdbStore
-		stableStore = mdbStore
+
+		opts := badger.DefaultOptions(cfg.DataPath)
+		badgerDB, err := raftbadger.New(cfg, &opts)
+		if err != nil {
+			return fmt.Errorf("failed to create new badger storage, err: %w", err)
+		}
+		wrapper := NewBadgerWrapper(badgerDB)
+
+		logStore = wrapper
+		stableStore = wrapper
 	}
 
 	// Instantiate the Raft systems.
 	ra, err := raft.NewRaft(config, (*fsm)(n), logStore, stableStore, snapshots, transport)
 	if err != nil {
-		return fmt.Errorf("new raft: %s", err)
+		return fmt.Errorf("new raft: %w", err)
 	}
 	n.raft = ra
 
