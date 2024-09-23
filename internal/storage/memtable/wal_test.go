@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/jukeks/tukki/internal/storage/files"
+	"github.com/jukeks/tukki/internal/storage/journal"
 	"github.com/jukeks/tukki/internal/storage/memtable"
 )
 
@@ -11,7 +12,7 @@ func TestWal(t *testing.T) {
 	dbDir := t.TempDir()
 	filename := files.Filename("wal")
 	mt := memtable.NewMemtable()
-	wal, err := memtable.OpenWal(dbDir, filename, mt)
+	wal, err := memtable.OpenWal(dbDir, filename, journal.WriteModeAsync, mt)
 	if err != nil {
 		t.Fatalf("failed to open wal: %v", err)
 	}
@@ -34,7 +35,7 @@ func TestWal(t *testing.T) {
 	}
 
 	mt = memtable.NewMemtable()
-	wal, err = memtable.OpenWal(dbDir, filename, mt)
+	wal, err = memtable.OpenWal(dbDir, filename, journal.WriteModeAsync, mt)
 	if err != nil {
 		t.Fatalf("failed to open wal: %v", err)
 	}

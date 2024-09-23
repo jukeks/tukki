@@ -2,6 +2,7 @@ package db
 
 import (
 	"github.com/jukeks/tukki/internal/storage/files"
+	"github.com/jukeks/tukki/internal/storage/journal"
 	"github.com/jukeks/tukki/internal/storage/memtable"
 	"github.com/jukeks/tukki/internal/storage/segments"
 )
@@ -25,13 +26,13 @@ func NewLiveSegment(id segments.SegmentId) *LiveSegment {
 	}
 }
 
-func (ls *LiveSegment) Open(dbDir string) error {
+func (ls *LiveSegment) Open(dbDir string, mode journal.WriteMode) error {
 	if ls.Memtable != nil {
 		panic("live segment already opened")
 	}
 
 	ls.Memtable = memtable.NewMemtable()
-	wal, err := memtable.OpenWal(dbDir, ls.WalFilename, ls.Memtable)
+	wal, err := memtable.OpenWal(dbDir, ls.WalFilename, mode, ls.Memtable)
 	if err != nil {
 		return err
 	}

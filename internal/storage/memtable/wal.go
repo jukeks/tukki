@@ -13,14 +13,14 @@ type Wal struct {
 	journal *journal.Journal
 }
 
-func OpenWal(dbDir string, journalName files.Filename, mt Memtable) (*Wal, error) {
+func OpenWal(dbDir string, journalName files.Filename, mode journal.WriteMode, mt Memtable) (*Wal, error) {
 	handle := func(r *journal.JournalReader) error {
 		return readJournal(r, mt)
 	}
 	if journalName == "" {
 		log.Fatalf("journal name is empty")
 	}
-	j, err := journal.OpenJournal(dbDir, journalName, journal.WriteModeAsync, handle)
+	j, err := journal.OpenJournal(dbDir, journalName, mode, handle)
 	if err != nil {
 		return nil, err
 	}

@@ -15,6 +15,7 @@ type WriteMode int
 const (
 	WriteModeSync WriteMode = iota
 	WriteModeAsync
+	WriteModeInMemory
 )
 
 type WriteSyncer interface {
@@ -91,6 +92,9 @@ func (j *Journal) Close() error {
 func NewJournalWriter(w WriteSyncer, writeMode WriteMode, head []byte) JournalWriter {
 	if writeMode == WriteModeSync {
 		return NewSynchronousJournalWriter(w, head)
+	}
+	if writeMode == WriteModeInMemory {
+		return NewInMemJournalWriter(head)
 	}
 
 	return NewAsynchronousJournalWriter(w, head)

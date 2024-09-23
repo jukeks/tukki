@@ -7,6 +7,7 @@ import (
 
 	"github.com/jukeks/tukki/internal/storage/files"
 	"github.com/jukeks/tukki/internal/storage/index"
+	"github.com/jukeks/tukki/internal/storage/journal"
 	"github.com/jukeks/tukki/internal/storage/segmentmembers"
 	"github.com/jukeks/tukki/internal/storage/segments"
 )
@@ -23,10 +24,26 @@ type Database struct {
 
 	ongoing *LiveSegment
 
-	walSizeLimit uint64
+	config Config
+}
+
+type Config struct {
+	WalSizeLimit uint64
+	JournalMode  journal.WriteMode
+}
+
+func GetDefaultConfig() Config {
+	return Config{
+		WalSizeLimit: 2 * 1024 * 1024,
+		JournalMode:  journal.WriteModeAsync,
+	}
 }
 
 func OpenDatabase(dbDir string) (*Database, error) {
+	return OpenDatabaseWithConfig(dbDir, GetDefaultConfig())
+}
+
+func OpenDatabaseWithConfig(dbDir string, config Config) (*Database, error) {
 	operationJournal, currentSegments, err := segments.OpenSegmentOperationJournal(dbDir)
 	if err != nil {
 		return nil, err
@@ -57,7 +74,7 @@ func OpenDatabase(dbDir string) (*Database, error) {
 		indexes:          make(map[segments.SegmentId]*index.Index),
 		operations:       currentSegments.Operations,
 		ongoing:          ongoing,
-		walSizeLimit:     2 * 1024 * 1024,
+		config:           config,
 	}
 
 	if !bootstrapped {
@@ -68,7 +85,7 @@ func OpenDatabase(dbDir string) (*Database, error) {
 		}
 	}
 
-	err = db.ongoing.Open(dbDir)
+	err = db.ongoing.Open(dbDir, config.JournalMode)
 	if err != nil {
 		log.Printf("failed to open wal: %v", err)
 		return nil, err
@@ -215,7 +232,7 @@ func (db *Database) SealCurrentSegment() (*LiveSegment, error) {
 	db.mu.Unlock()
 
 	db.ongoing = nextSegment
-	err = db.ongoing.Open(db.dbDir)
+	err = db.ongoing.Open(db.dbDir, db.config.JournalMode)
 	if err != nil {
 		log.Printf("failed to open wal: %v", err)
 		return nil, err
