@@ -88,7 +88,7 @@ The complete protocol can be seen in [tukki.rpc](proto/tukki/rpc/).
 
 tukki currently uses Hashicorp's [Raft](https://github.com/hashicorp/raft) library of [Raft Consensus Algorithm](https://raft.github.io/) for concensus and replication.
 
-The current storage backend for Raft needs is [raft-mdb](https://github.com/hashicorp/raft-mdb), but the goal is to eventually use tukki itself for all storage needs.
+The current storage backend for Raft needs is Badgerdb, but the goal is to eventually use tukki itself for all storage needs.
 
 ## Database structures
 
