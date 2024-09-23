@@ -6,12 +6,16 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/signal"
+	"runtime/pprof"
 	"strings"
+	"syscall"
 
 	"github.com/jukeks/tukki/internal/db"
 	"github.com/jukeks/tukki/internal/grpc/kv"
 	"github.com/jukeks/tukki/internal/grpc/sstable"
 	"github.com/jukeks/tukki/internal/replica"
+	"github.com/jukeks/tukki/internal/storage/journal"
 	kvv1 "github.com/jukeks/tukki/proto/gen/tukki/rpc/kv/v1"
 	sstablev1 "github.com/jukeks/tukki/proto/gen/tukki/rpc/sstable/v1"
 	"google.golang.org/grpc"
@@ -32,6 +36,7 @@ var (
 	sstablePeerList = flag.String("sstable-peers", "",
 		"The SSTable peers. Used to sync missing segments. Should have the server port.")
 	inititialize = flag.Bool("init", false, "Initialize the database")
+	cpuprofile   = flag.String("cpuprofile", "", "write cpu profile to file")
 )
 
 func parsePeers(peers string) ([]replica.Peer, error) {
@@ -49,13 +54,26 @@ func parsePeers(peers string) ([]replica.Peer, error) {
 
 func main() {
 	flag.Parse()
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			log.Fatalf("failed to create cpuprofile: %v", err)
+		}
+		pprof.StartCPUProfile(f)
+	}
+
+	defer pprof.StopCPUProfile()
 
 	err := os.MkdirAll(*dbDir, 0755)
 	if err != nil {
 		log.Fatalf("failed to create db dir: %v", err)
 	}
 
-	db, err := db.OpenDatabase(*dbDir)
+	config := db.GetDefaultConfig()
+	// In memory journal is good as raft will replay logs on startup
+	config.JournalMode = journal.WriteModeInMemory
+
+	db, err := db.OpenDatabaseWithConfig(*dbDir, config)
 	if err != nil {
 		log.Fatalf("failed to open database: %v", err)
 	}
@@ -90,5 +108,18 @@ func main() {
 	kvv1.RegisterKvServiceServer(grpcServer, kvServer)
 	sstablev1.RegisterSstableServiceServer(grpcServer, sstableServer)
 
-	grpcServer.Serve(ls)
+	sigchnl := make(chan os.Signal, 1)
+	signal.Notify(sigchnl, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		for {
+			<-sigchnl
+			grpcServer.GracefulStop()
+			break
+		}
+	}()
+
+	if err := grpcServer.Serve(ls); err != nil {
+		log.Fatalf("failed to serve: %v", err)
+	}
 }

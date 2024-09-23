@@ -138,7 +138,7 @@ func (db *Database) getCurrentWalSize() uint64 {
 }
 
 func (db *Database) isOverWalSizeLimit() bool {
-	return db.getCurrentWalSize() > db.walSizeLimit
+	return db.getCurrentWalSize() > db.config.WalSizeLimit
 }
 
 func (db *Database) handleWalSizeLimit() error {

@@ -133,6 +133,10 @@ func TestJournalWriterSnapshotAsync(t *testing.T) {
 	testJournalWriterSnapshot(t, WriteModeAsync)
 }
 
+func TestJournalWriterSnapshotInMemory(t *testing.T) {
+	testJournalWriterSnapshot(t, WriteModeInMemory)
+}
+
 func testJournalWriterSnapshot(t *testing.T, writeMode WriteMode) {
 	dbDir := t.TempDir()
 	filename := files.Filename(randstr.String(10))
@@ -174,7 +178,7 @@ func testJournalWriterSnapshot(t *testing.T, writeMode WriteMode) {
 	}
 
 	var entries []*walv1.WalEntry
-	j2, err := OpenJournal(dbDir, filename, writeMode, func(r *JournalReader) error {
+	j2, err := OpenJournal(dbDir, filename2, writeMode, func(r *JournalReader) error {
 		for {
 			journalEntry := &walv1.WalEntry{}
 			err := r.Read(journalEntry)
@@ -188,6 +192,9 @@ func testJournalWriterSnapshot(t *testing.T, writeMode WriteMode) {
 		}
 		return nil
 	})
+	if err != nil {
+		t.Fatalf("failed to open journal 2: %v", err)
+	}
 	j2.Close()
 
 	if entries[0].Key != "key1" {
