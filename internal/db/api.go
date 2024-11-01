@@ -7,6 +7,8 @@ import (
 	"sort"
 
 	"github.com/jukeks/tukki/internal/storage/files"
+	"github.com/jukeks/tukki/internal/storage/index"
+	"github.com/jukeks/tukki/internal/storage/memtable"
 	"github.com/jukeks/tukki/internal/storage/segments"
 	"github.com/jukeks/tukki/internal/storage/sstable"
 )
@@ -68,6 +70,10 @@ func (db *Database) getSegmentsSorted() []segments.SegmentMetadata {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
+	return db.getSegmentsSortedUnlocked()
+}
+
+func (db *Database) getSegmentsSortedUnlocked() []segments.SegmentMetadata {
 	keys := make([]segments.SegmentId, len(db.segments))
 	i := 0
 	for k := range db.segments {
@@ -86,6 +92,28 @@ func (db *Database) getSegmentsSorted() []segments.SegmentMetadata {
 	return segments
 }
 
+func (db *Database) getIndexesCopyUnlocked() map[segments.SegmentId]*index.Index {
+	copy := make(map[segments.SegmentId]*index.Index)
+	for k, v := range db.indexes {
+		copy[k] = v
+	}
+	return copy
+}
+
+func (db *Database) getStateCopy() (
+	memtable.Memtable, []segments.SegmentMetadata, map[segments.SegmentId]*index.Index,
+) {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	mt := db.ongoing.Memtable.Copy()
+	segments := db.getSegmentsSortedUnlocked()
+	index := db.getIndexesCopyUnlocked()
+
+	return mt, segments, index
+
+}
+
 func (db *Database) GetSegmentMetadata() map[segments.SegmentId]segments.SegmentMetadata {
 	db.mu.Lock()
 	defer db.mu.Unlock()
@@ -100,7 +128,9 @@ func (db *Database) GetSegmentMetadata() map[segments.SegmentId]segments.Segment
 
 type Cleanup func()
 
-func (db *Database) GetSSTableReader(segmentId segments.SegmentId) (*sstable.SSTableReader, Cleanup, error) {
+func (db *Database) GetSSTableReader(segmentId segments.SegmentId) (
+	*sstable.SSTableReader, Cleanup, error,
+) {
 	db.mu.Lock()
 	segmentMetadata, ok := db.segments[segmentId]
 	db.mu.Unlock()
@@ -159,7 +189,6 @@ func (db *Database) handleWalSizeLimit() error {
 }
 
 func (db *Database) GetIterator(start, end string) (*Iterator, error) {
-	// indexes are not copy, TODO race condition
-	// same for memtable
-	return NewIterator(db.dbDir, start, end, db.ongoing.Memtable, db.getSegmentsSorted(), db.indexes)
+	mt, segments, indexes := db.getStateCopy()
+	return NewIterator(db.dbDir, start, end, mt, segments, indexes)
 }
