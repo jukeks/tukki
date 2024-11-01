@@ -14,6 +14,7 @@ type Memtable interface {
 	Iterate() keyvalue.KeyValueIterator
 	MemberCount() int
 	Size() uint64
+	Copy() Memtable
 }
 
 func NewMemtable() Memtable {
@@ -49,6 +50,21 @@ func (m *memtableRedBlackTree) Insert(key, value string) {
 	m.t.Put(string(key), keyvalue.Value{
 		Value: value,
 	})
+}
+
+func (m *memtableRedBlackTree) Copy() Memtable {
+	t := redblacktree.NewWithStringComparator()
+	iter := m.t.Iterator()
+	for iter.Next() {
+		key := iter.Key().(string)
+		value := iter.Value().(keyvalue.Value)
+		t.Put(key, value)
+	}
+
+	return &memtableRedBlackTree{
+		t:    t,
+		size: m.size,
+	}
 }
 
 type memtableRedBlackTreeIterator struct {

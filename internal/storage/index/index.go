@@ -3,14 +3,21 @@ package index
 import (
 	"bufio"
 	"io"
+	"sort"
 
 	"github.com/jukeks/tukki/internal/storage/files"
 	"github.com/jukeks/tukki/internal/storage/marshalling"
 	indexv1 "github.com/jukeks/tukki/proto/gen/tukki/storage/index/v1"
 )
 
+type IndexEntry struct {
+	Key    string
+	Offset uint64
+}
+
 type Index struct {
-	Entries map[string]uint64
+	Entries   map[string]uint64
+	EntryList []IndexEntry
 }
 
 func OpenIndex(dbDir string, filename files.Filename) (*Index, error) {
@@ -22,6 +29,7 @@ func OpenIndex(dbDir string, filename files.Filename) (*Index, error) {
 	reader := bufio.NewReader(f)
 
 	entries := make(map[string]uint64)
+	entryList := make([]IndexEntry, 0)
 	for {
 		var record indexv1.IndexEntry
 		err := marshalling.ReadLengthPrefixedProtobufMessage(reader, &record)
@@ -32,10 +40,15 @@ func OpenIndex(dbDir string, filename files.Filename) (*Index, error) {
 			return &Index{}, err
 		}
 		entries[record.Key] = record.Offset
+		entryList = append(entryList, IndexEntry{
+			Key:    record.Key,
+			Offset: record.Offset,
+		})
 	}
 
 	return &Index{
-		Entries: entries,
+		Entries:   entries,
+		EntryList: entryList,
 	}, nil
 }
 
@@ -58,11 +71,23 @@ func NewIndexWriter(writer io.WriteCloser) *IndexWriter {
 type OffsetMap map[string]uint64
 
 func (w *IndexWriter) WriteFromOffsets(offsets OffsetMap) error {
-	bw := bufio.NewWriter(w.writer)
+	offsetList := make([]IndexEntry, 0, len(offsets))
 	for key, offset := range offsets {
-		record := indexv1.IndexEntry{
+		offsetList = append(offsetList, IndexEntry{
 			Key:    key,
 			Offset: offset,
+		})
+	}
+
+	sort.Slice(offsetList, func(i, j int) bool {
+		return offsetList[i].Key < offsetList[j].Key
+	})
+
+	bw := bufio.NewWriter(w.writer)
+	for _, entry := range offsetList {
+		record := indexv1.IndexEntry{
+			Key:    entry.Key,
+			Offset: entry.Offset,
 		}
 		_, err := marshalling.WriteLengthPrefixedProtobufMessage(bw, &record)
 		if err != nil {

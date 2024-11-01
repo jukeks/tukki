@@ -12,11 +12,13 @@ A toy distributed key-value store built to explore log-structured merge-tree (LS
 
 ## Operations
 
-tukki supports only three operations:
+tukki supports following operations:
 
 * Get key
+* Get by range
 * Set key
 * Delete key
+* Delete by range
 
 Keys and values are both UTF-8 strings.
 
