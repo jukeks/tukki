@@ -19,9 +19,11 @@ func setupDB(t *testing.T) (*Database, []Pair) {
 
 	// segment 1
 	pairs := []Pair{
+		{"key1", "value1"},
 		{"key5", "value5"},
 		{"key2", "value2"},
 		{"key4", "value4"},
+		{"key9", "value9"},
 	}
 	for _, pair := range pairs {
 		if err := db.Set(pair.Key, pair.Value); err != nil {
@@ -35,8 +37,9 @@ func setupDB(t *testing.T) (*Database, []Pair) {
 
 	// segment 2
 	pairs = []Pair{
-		{"key1", "value1"},
+		{"key1", "value1-new"},
 		{"key3", "value3"},
+		{"key5", "value5-new"},
 	}
 	for _, pair := range pairs {
 		if err := db.Set(pair.Key, pair.Value); err != nil {
@@ -56,6 +59,7 @@ func setupDB(t *testing.T) (*Database, []Pair) {
 	pairs = []Pair{
 		{"key6", "value6"},
 		{"key7", "value7"},
+		{"key1", "value1-new-new"},
 	}
 	for _, pair := range pairs {
 		if err := db.Set(pair.Key, pair.Value); err != nil {
@@ -64,12 +68,13 @@ func setupDB(t *testing.T) (*Database, []Pair) {
 	}
 
 	expected := []Pair{
-		{"key1", "value1"},
+		{"key1", "value1-new-new"},
 		{"key2", "value2"},
 		{"key3", "value3"},
-		{"key5", "value5"},
+		{"key5", "value5-new"},
 		{"key6", "value6"},
 		{"key7", "value7"},
+		{"key9", "value9"},
 	}
 
 	return db, expected
