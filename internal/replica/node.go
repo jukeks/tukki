@@ -9,10 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dgraph-io/badger/v3"
 	"github.com/hashicorp/raft"
-
-	raftbadger "github.com/rfyiamcool/raft-badger"
 
 	"github.com/jukeks/tukki/internal/db"
 )
@@ -93,21 +90,13 @@ func (n *Node) Open(localID string, enableSingle bool, peers []Peer) error {
 		logStore = raft.NewInmemStore()
 		stableStore = raft.NewInmemStore()
 	} else {
-		cfg := raftbadger.Config{
-			DataPath:      n.RaftDir,
-			Compression:   "zstd", // zstd, snappy
-			DisableLogger: false,
-		}
-
-		opts := badger.DefaultOptions(cfg.DataPath)
-		badgerDB, err := raftbadger.New(cfg, &opts)
+		raftDb, err := db.OpenDatabase(n.RaftDir)
 		if err != nil {
-			return fmt.Errorf("failed to create new badger storage, err: %w", err)
+			return fmt.Errorf("failed to open raft database, err: %w", err)
 		}
-		wrapper := NewBadgerWrapper(badgerDB)
-
-		logStore = wrapper
-		stableStore = wrapper
+		raftukki := &Raftukki{db: raftDb}
+		stableStore = raftukki
+		logStore = raftukki
 	}
 
 	// Instantiate the Raft systems.
