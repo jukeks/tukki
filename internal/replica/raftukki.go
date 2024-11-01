@@ -2,6 +2,7 @@ package replica
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -17,20 +18,18 @@ type Raftukki struct {
 	db *db.Database
 }
 
-func tukkiWrapNotFound(err error) error {
-	if err == nil {
-		return nil
-	}
-	if err == db.ErrKeyNotFound {
-		return ErrKeyNotFound
-	}
-	return err
-}
+var ErrKeyNotFound = errors.New("not found")
 
 // Get implements raft.StableStore.
 func (t *Raftukki) Get(key []byte) ([]byte, error) {
 	val, err := t.db.Get(string(key))
-	return []byte(val), tukkiWrapNotFound(err)
+	if err != nil {
+		if err == db.ErrKeyNotFound {
+			return nil, ErrKeyNotFound
+		}
+		return nil, err
+	}
+	return []byte(val), err
 }
 
 // Set implements raft.StableStore.
@@ -45,10 +44,10 @@ func (t *Raftukki) GetUint64(key []byte) (uint64, error) {
 		if err == db.ErrKeyNotFound {
 			return 0, ErrKeyNotFound
 		}
-		return 0, tukkiWrapNotFound(err)
+		return 0, err
 	}
 	number, err := strconv.ParseUint(val, 10, 64)
-	return number, tukkiWrapNotFound(err)
+	return number, err
 }
 
 // SetUint64 implements raft.StableStore.
@@ -65,20 +64,20 @@ func logKey(index uint64) string {
 // DeleteRange implements raft.LogStore.
 func (t *Raftukki) DeleteRange(min uint64, max uint64) error {
 	_, err := t.db.DeleteRange(logKey(min), logKey(max))
-	return tukkiWrapNotFound(err)
+	return err
 }
 
 // FirstIndex implements raft.LogStore.
 func (t *Raftukki) FirstIndex() (uint64, error) {
 	c, err := t.db.GetCursorWithRange(logKey(0), "")
 	if err != nil {
-		return 0, tukkiWrapNotFound(err)
+		return 0, err
 	}
 	defer c.Close()
 
 	val, err := c.Next()
 	if err != nil {
-		return 0, tukkiWrapNotFound(err)
+		return 0, err
 	}
 
 	indexStr := val.Key[len(logPrefix):]
@@ -90,7 +89,7 @@ func (t *Raftukki) LastIndex() (uint64, error) {
 	// this is super slow, need to have reverse cursor to make it faster
 	c, err := t.db.GetCursorWithRange(logKey(0), "")
 	if err != nil {
-		return 0, tukkiWrapNotFound(err)
+		return 0, err
 	}
 	defer c.Close()
 
@@ -101,7 +100,7 @@ func (t *Raftukki) LastIndex() (uint64, error) {
 			if err == io.EOF {
 				return lastIndex, nil
 			}
-			return 0, tukkiWrapNotFound(err)
+			return 0, err
 		}
 
 		indexStr := val.Key[len(logPrefix):]
@@ -165,7 +164,7 @@ func (t *Raftukki) StoreLogs(logs []*raft.Log) error {
 func (t *Raftukki) GetLog(index uint64, log *raft.Log) error {
 	val, err := t.db.Get(logKey(index))
 	if err != nil {
-		return tukkiWrapNotFound(err)
+		return err
 	}
 	b, err := base64.StdEncoding.DecodeString(val)
 	if err != nil {
