@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/raft"
 
 	"github.com/jukeks/tukki/internal/db"
+	"github.com/jukeks/tukki/internal/grpc/kv"
 )
 
 const (
@@ -24,6 +25,8 @@ type command struct {
 	Op    string `json:"op,omitempty"`
 	Key   string `json:"key,omitempty"`
 	Value string `json:"value,omitempty"`
+	Min   string `json:"min,omitempty"`
+	Max   string `json:"max,omitempty"`
 }
 
 type Peer struct {
@@ -171,6 +174,26 @@ func (n *Node) Get(key string) (string, error) {
 	return n.db.Get(key)
 }
 
+// GetRange implements kv.DB.
+func (n *Node) GetRange(min string, max string) ([]kv.Pair, error) {
+	n.mu.RLock()
+	defer n.mu.RUnlock()
+	dbPairs, err := n.db.GetRange(min, max)
+	if err != nil {
+		return nil, err
+	}
+
+	var pairs []kv.Pair
+	for _, dbPair := range dbPairs {
+		pairs = append(pairs, kv.Pair{
+			Key:   dbPair.Key,
+			Value: dbPair.Value,
+		})
+	}
+
+	return pairs, nil
+}
+
 // Set sets the value for the given key.
 func (n *Node) Set(key, value string) error {
 	if n.raft.State() != raft.Leader {
@@ -188,7 +211,11 @@ func (n *Node) Set(key, value string) error {
 	}
 
 	f := n.raft.Apply(b, raftTimeout)
-	return f.Error()
+	if f.Error() != nil {
+		return f.Error()
+	}
+	err, _ = f.Response().(error)
+	return err
 }
 
 // Delete deletes the given key.
@@ -207,5 +234,37 @@ func (n *Node) Delete(key string) error {
 	}
 
 	f := n.raft.Apply(b, raftTimeout)
-	return f.Error()
+	if f.Error() != nil {
+		return f.Error()
+	}
+	err, _ = f.Response().(error)
+	return err
+}
+
+// DeleteRange implements kv.DB.
+func (n *Node) DeleteRange(min string, max string) (uint64, error) {
+	if n.raft.State() != raft.Leader {
+		return 0, fmt.Errorf("not leader")
+	}
+
+	c := &command{
+		Op:  "deleteRange",
+		Min: min,
+		Max: max,
+	}
+	b, err := json.Marshal(c)
+	if err != nil {
+		return 0, err
+	}
+
+	f := n.raft.Apply(b, raftTimeout)
+	if f.Error() != nil {
+		return 0, f.Error()
+	}
+
+	if f.Error() != nil {
+		return 0, f.Error()
+	}
+	err, _ = f.Response().(error)
+	return 0, err
 }

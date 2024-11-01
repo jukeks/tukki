@@ -2,6 +2,7 @@ package kv
 
 import (
 	"context"
+	"sort"
 	"testing"
 
 	"google.golang.org/grpc"
@@ -31,6 +32,34 @@ func (s *Store) Set(key, value string) error {
 func (s *Store) Delete(key string) error {
 	delete(s.store, key)
 	return nil
+}
+
+func (s *Store) GetRange(min, max string) ([]Pair, error) {
+	resp := make([]Pair, 0, len(s.store))
+	for k, v := range s.store {
+		if k < min || k > max {
+			continue
+		}
+		resp = append(resp, Pair{Key: k, Value: v})
+	}
+	sort.Slice(resp, func(i, j int) bool {
+		return resp[i].Key < resp[j].Key
+	})
+
+	return resp, nil
+}
+
+func (s *Store) DeleteRange(min, max string) (uint64, error) {
+	toDelete, err := s.GetRange(min, max)
+	if err != nil {
+		return 0, err
+	}
+
+	for _, pair := range toDelete {
+		delete(s.store, pair.Key)
+	}
+
+	return uint64(len(toDelete)), nil
 }
 
 func TestKvServer(t *testing.T) {

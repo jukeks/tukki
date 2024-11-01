@@ -108,6 +108,19 @@ func repl(client kvv1.KvServiceClient) {
 				continue
 			}
 			fmt.Printf("value: %s (%v)\n", resp.GetPair().Value, time.Since(start))
+		case "range":
+			start := time.Now()
+			resp, err := client.QueryRange(context.Background(), &kvv1.QueryRangeRequest{
+				Min: cmd.Key,
+				Max: cmd.Value,
+			})
+			if err != nil {
+				fmt.Printf("failed to get range: %v (%v)\n", err, time.Since(start))
+				continue
+			}
+			for _, pair := range resp.Pairs {
+				fmt.Printf("%s: %s\n", pair.Key, pair.Value)
+			}
 		case "delete":
 			_, err := client.Delete(context.Background(), &kvv1.DeleteRequest{
 				Key: cmd.Key,
@@ -116,6 +129,17 @@ func repl(client kvv1.KvServiceClient) {
 				fmt.Printf("failed to delete: %v\n", err)
 			}
 			fmt.Printf("Key deleted\n")
+		case "deleteRange":
+			start := time.Now()
+			resp, err := client.DeleteRange(context.Background(), &kvv1.DeleteRangeRequest{
+				Min: cmd.Key,
+				Max: cmd.Value,
+			})
+			if err != nil {
+				fmt.Printf("failed to delete range: %v (%v)\n", err, time.Since(start))
+				continue
+			}
+			fmt.Printf("deleted %d keys (%v)\n", resp.Deleted, time.Since(start))
 		case "exit":
 			return
 		default:
