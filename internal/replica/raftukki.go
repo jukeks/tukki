@@ -58,7 +58,8 @@ func (t *Raftukki) SetUint64(key []byte, val uint64) error {
 const logPrefix = "raft-log-"
 
 func logKey(index uint64) string {
-	return fmt.Sprintf("%s%d", logPrefix, index)
+	// need to pad with zeros to make it sortable
+	return fmt.Sprintf("%s%012d", logPrefix, index)
 }
 
 // DeleteRange implements raft.LogStore.
