@@ -188,7 +188,11 @@ func (db *Database) handleWalSizeLimit() error {
 	return nil
 }
 
-func (db *Database) GetIterator(start, end string) (*Iterator, error) {
+func (db *Database) GetCursor() (*Cursor, error) {
+	return db.GetCursorWithRange("", "")
+}
+
+func (db *Database) GetCursorWithRange(start, end string) (*Cursor, error) {
 	mt, segments, indexes := db.getStateCopy()
-	return NewIterator(db.dbDir, start, end, mt, segments, indexes)
+	return NewCursor(db.dbDir, start, end, mt, segments, indexes)
 }

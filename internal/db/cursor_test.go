@@ -43,6 +43,9 @@ func setupDB(t *testing.T) (*Database, []Pair) {
 			t.Fatalf("failed to set key: %v", err)
 		}
 	}
+	if err := db.Delete("key4"); err != nil {
+		t.Fatalf("failed to delete key: %v", err)
+	}
 
 	_, err = db.SealCurrentSegment()
 	if err != nil {
@@ -64,7 +67,6 @@ func setupDB(t *testing.T) (*Database, []Pair) {
 		{"key1", "value1"},
 		{"key2", "value2"},
 		{"key3", "value3"},
-		{"key4", "value4"},
 		{"key5", "value5"},
 		{"key6", "value6"},
 		{"key7", "value7"},
@@ -73,11 +75,11 @@ func setupDB(t *testing.T) (*Database, []Pair) {
 	return db, expected
 }
 
-func TestIteratorWithoutRange(t *testing.T) {
+func TestCursorWithoutRange(t *testing.T) {
 	db, expected := setupDB(t)
 	defer db.Close()
 
-	iterator, err := db.GetIterator("", "")
+	iterator, err := db.GetCursor()
 	if err != nil {
 		t.Fatalf("failed to get iterator: %v", err)
 	}
@@ -85,10 +87,10 @@ func TestIteratorWithoutRange(t *testing.T) {
 
 	for _, pair := range expected {
 		entry, err := iterator.Next()
-		t.Logf("entry: %v", entry)
 		if err != nil {
 			t.Fatalf("failed to get key: %v", err)
 		}
+		t.Logf("entry: %v", entry)
 		if entry.Key != pair.Key {
 			t.Fatalf("expected key %s, got %s", pair.Key, entry.Key)
 		}
@@ -103,11 +105,11 @@ func TestIteratorWithoutRange(t *testing.T) {
 	}
 }
 
-func TestIteratorWithRange(t *testing.T) {
+func TestCursorWithRange(t *testing.T) {
 	db, expected := setupDB(t)
 	defer db.Close()
 
-	iterator, err := db.GetIterator("key2", "key5")
+	iterator, err := db.GetCursorWithRange("key2", "key5")
 	if err != nil {
 		t.Fatalf("failed to get iterator: %v", err)
 	}
@@ -116,10 +118,10 @@ func TestIteratorWithRange(t *testing.T) {
 	expected = expected[1:4]
 	for _, pair := range expected {
 		entry, err := iterator.Next()
-		t.Logf("entry: %v", entry)
 		if err != nil {
 			t.Fatalf("failed to get key: %v", err)
 		}
+		t.Logf("entry: %v", entry)
 		if entry.Key != pair.Key {
 			t.Fatalf("expected key %s, got %s", pair.Key, entry.Key)
 		}
@@ -134,11 +136,11 @@ func TestIteratorWithRange(t *testing.T) {
 	}
 }
 
-func TestIteratorWithRangeAndEmptyStart(t *testing.T) {
+func TestCursorWithRangeAndEmptyStart(t *testing.T) {
 	db, expected := setupDB(t)
 	defer db.Close()
 
-	iterator, err := db.GetIterator("", "key5")
+	iterator, err := db.GetCursorWithRange("", "key5")
 	if err != nil {
 		t.Fatalf("failed to get iterator: %v", err)
 	}
@@ -147,10 +149,10 @@ func TestIteratorWithRangeAndEmptyStart(t *testing.T) {
 	expected = expected[:4]
 	for _, pair := range expected {
 		entry, err := iterator.Next()
-		t.Logf("entry: %v", entry)
 		if err != nil {
 			t.Fatalf("failed to get key: %v", err)
 		}
+		t.Logf("entry: %v", entry)
 		if entry.Key != pair.Key {
 			t.Fatalf("expected key %s, got %s", pair.Key, entry.Key)
 		}
@@ -165,11 +167,11 @@ func TestIteratorWithRangeAndEmptyStart(t *testing.T) {
 	}
 }
 
-func TestIteratorWithRangeAndEmptyEnd(t *testing.T) {
+func TestCursorWithRangeAndEmptyEnd(t *testing.T) {
 	db, expected := setupDB(t)
 	defer db.Close()
 
-	iterator, err := db.GetIterator("key2", "")
+	iterator, err := db.GetCursorWithRange("key2", "")
 	if err != nil {
 		t.Fatalf("failed to get iterator: %v", err)
 	}
