@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
 
 	"github.com/jukeks/tukki/internal/storage/files"
@@ -119,10 +118,10 @@ func (c *Cursor) open() error {
 	return nil
 }
 
-func (c *Cursor) Next() (keyvalue.IteratorEntry, error) {
+func (c *Cursor) Next() (Pair, error) {
 	if !c.opened {
 		if err := c.open(); err != nil {
-			return keyvalue.IteratorEntry{},
+			return Pair{},
 				fmt.Errorf("failed to open iterator: %w", err)
 		}
 	}
@@ -132,23 +131,22 @@ func (c *Cursor) Next() (keyvalue.IteratorEntry, error) {
 		result := c.openedSegments[0]
 		canProceed := false
 		for _, segment := range c.openedSegments {
-			log.Printf("checking segment %+v", segment)
 			current, err := segment.Get()
-			if err == nil && (current.Key <= c.end || c.end == "") {
+			if err == nil && (c.end == "" || current.Key <= c.end) {
 				result = segment
 				canProceed = true
 				break
 			}
 		}
 		if !canProceed {
-			return keyvalue.IteratorEntry{}, io.EOF
+			return Pair{}, io.EOF
 		}
 
 		for _, segment := range c.openedSegments {
 			current, err := segment.Get()
 			if err != nil {
 				if err != io.EOF {
-					return keyvalue.IteratorEntry{},
+					return Pair{},
 						fmt.Errorf("failed to read next entry: %w", err)
 				}
 				continue
@@ -160,7 +158,6 @@ func (c *Cursor) Next() (keyvalue.IteratorEntry, error) {
 
 			currentResult, _ := result.Get()
 			if current.Key < currentResult.Key {
-				log.Printf("current key %s is less than result key %s", current.Key, currentResult.Key)
 				result = segment
 			}
 		}
@@ -178,11 +175,13 @@ func (c *Cursor) Next() (keyvalue.IteratorEntry, error) {
 		}
 
 		if ret.Deleted {
-			log.Printf("deleted key %s, retry", ret.Key)
 			continue
 		}
 
-		return ret, nil
+		return Pair{
+			Key:   ret.Key,
+			Value: ret.Value,
+		}, nil
 	}
 }
 
@@ -213,14 +212,16 @@ func (c *Cursor) seek() error {
 		memtable: c.memtable,
 		iterator: mtIterator,
 	}
-	mtState.Progress()
 	// seek in memtable
 	for {
-		current, _ := mtState.Get()
+		mtState.Progress()
+		current, err := mtState.Get()
+		if err != nil {
+			break
+		}
 		if current.Key >= c.start {
 			break
 		}
-		mtState.Progress()
 	}
 	c.openedSegments = append(c.openedSegments, mtState)
 

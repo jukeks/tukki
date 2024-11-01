@@ -3,6 +3,7 @@ package db
 import (
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"sort"
 
@@ -195,4 +196,59 @@ func (db *Database) GetCursor() (*Cursor, error) {
 func (db *Database) GetCursorWithRange(start, end string) (*Cursor, error) {
 	mt, segments, indexes := db.getStateCopy()
 	return NewCursor(db.dbDir, start, end, mt, segments, indexes)
+}
+
+type Pair struct {
+	Key   string
+	Value string
+}
+
+func (db *Database) GetRange(start, end string) ([]Pair, error) {
+	cursor, err := db.GetCursorWithRange(start, end)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close()
+
+	var pairs []Pair
+	for {
+		entry, err := cursor.Next()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, err
+		}
+
+		pairs = append(pairs, Pair{Key: entry.Key, Value: entry.Value})
+	}
+
+	return pairs, nil
+}
+
+func (db *Database) DeleteRange(start, end string) (int, error) {
+	cursor, err := db.GetCursorWithRange(start, end)
+	if err != nil {
+		return 0, err
+	}
+	defer cursor.Close()
+
+	var deleted int
+	for {
+		entry, err := cursor.Next()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return 0, err
+		}
+
+		err = db.Delete(entry.Key)
+		if err != nil {
+			return 0, err
+		}
+		deleted++
+	}
+
+	return deleted, nil
 }

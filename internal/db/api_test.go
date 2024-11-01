@@ -1,6 +1,7 @@
 package db
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/jukeks/tukki/internal/storage/segments"
@@ -46,6 +47,7 @@ func TestGetFromSegments(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
+	defer db.Close()
 
 	key := randstr.String(10)
 	value := randstr.String(10)
@@ -83,6 +85,7 @@ func TestGetSSTableReader(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
+	defer db.Close()
 
 	key := randstr.String(10)
 	value := randstr.String(10)
@@ -117,6 +120,7 @@ func TestGetSegmentMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
+	defer db.Close()
 
 	key := randstr.String(10)
 	value := randstr.String(10)
@@ -142,5 +146,127 @@ func TestGetSegmentMetadata(t *testing.T) {
 
 	if segment.Id != 0 {
 		t.Fatalf("expected segment id 0, got %d", segment.Id)
+	}
+}
+
+func TestGetCursorWithRange(t *testing.T) {
+	db, err := OpenDatabase(t.TempDir())
+	if err != nil {
+		t.Fatalf("failed to open database: %v", err)
+	}
+	defer db.Close()
+
+	values := []string{}
+	for i := 0; i < 10000; i++ {
+		key := fmt.Sprintf("key-%04d", i)
+		value := randstr.String(10)
+		err = db.Set(key, value)
+		if err != nil {
+			t.Fatalf("failed to set key-value pair: %v", err)
+		}
+		values = append(values, value)
+
+		if i%1000 == 0 {
+			_, err = db.SealCurrentSegment()
+			if err != nil {
+				t.Fatalf("failed to seal segment: %v", err)
+			}
+		}
+	}
+
+	cursor, err := db.GetCursorWithRange("key-0000", "key-9999")
+	if err != nil {
+		t.Fatalf("failed to get cursor: %v", err)
+	}
+	defer cursor.Close()
+
+	for i := 0; i < 10000; i++ {
+		entry, err := cursor.Next()
+		if err != nil {
+			t.Fatalf("failed to get key: %v", err)
+		}
+
+		key := fmt.Sprintf("key-%04d", i)
+		if entry.Key != key {
+			t.Fatalf("expected key %s, got %s", key, entry.Key)
+		}
+
+		if entry.Value != values[i] {
+			t.Fatalf("expected value %s, got %s", values[i], entry.Value)
+		}
+	}
+
+	_, err = cursor.Next()
+	if err == nil {
+		t.Fatalf("expected EOF, got %v", err)
+	}
+
+	cursor, err = db.GetCursorWithRange("key-0100", "key-0200")
+	if err != nil {
+		t.Fatalf("failed to get cursor: %v", err)
+	}
+
+	for i := 100; i < 200; i++ {
+		entry, err := cursor.Next()
+		if err != nil {
+			t.Fatalf("failed to get key: %v", err)
+		}
+
+		key := fmt.Sprintf("key-%04d", i)
+		if entry.Key != key {
+			t.Fatalf("expected key %s, got %s", key, entry.Key)
+		}
+
+		if entry.Value != values[i] {
+			t.Fatalf("expected value %s, got %s", values[i], entry.Value)
+		}
+	}
+}
+
+func TestDeleteRange(t *testing.T) {
+	db, err := OpenDatabase(t.TempDir())
+	if err != nil {
+		t.Fatalf("failed to open database: %v", err)
+	}
+	defer db.Close()
+
+	for i := 0; i < 10000; i++ {
+		key := fmt.Sprintf("key-%04d", i)
+		value := randstr.String(10)
+		err = db.Set(key, value)
+		if err != nil {
+			t.Fatalf("failed to set key-value pair: %v", err)
+		}
+
+		if i%1000 == 0 {
+			_, err = db.SealCurrentSegment()
+			if err != nil {
+				t.Fatalf("failed to seal segment: %v", err)
+			}
+		}
+	}
+
+	deleted, err := db.DeleteRange("key-0100", "key-1000")
+	if err != nil {
+		t.Fatalf("failed to delete range: %v", err)
+	}
+	if deleted != 901 {
+		t.Fatalf("expected 10000 deleted, got %d", deleted)
+	}
+
+	cursor, err := db.GetCursorWithRange("key-0000", "key-9999")
+	if err != nil {
+		t.Fatalf("failed to get cursor: %v", err)
+	}
+	for i := 0; i < 10000-deleted; i++ {
+		_, err := cursor.Next()
+		if err != nil {
+			t.Fatalf("failed to get key: %v", err)
+		}
+	}
+
+	_, err = cursor.Next()
+	if err == nil {
+		t.Fatalf("expected EOF, got %v", err)
 	}
 }

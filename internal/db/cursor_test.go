@@ -5,11 +5,6 @@ import (
 	"testing"
 )
 
-type Pair struct {
-	Key   string
-	Value string
-}
-
 func setupDB(t *testing.T) (*Database, []Pair) {
 	dbDir := t.TempDir()
 	db, err := OpenDatabase(dbDir)
