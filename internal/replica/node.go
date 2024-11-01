@@ -92,6 +92,14 @@ func (n *Node) Open(localID string, enableSingle bool, peers []Peer) error {
 	if n.inmem {
 		logStore = raft.NewInmemStore()
 		stableStore = raft.NewInmemStore()
+	} else if true {
+		raftDb, err := db.OpenDatabase(n.RaftDir)
+		if err != nil {
+			return fmt.Errorf("failed to open raft database, err: %w", err)
+		}
+		raftukki := &Raftukki{db: raftDb}
+		stableStore = raftukki
+		logStore = raftukki
 	} else {
 		cfg := raftbadger.Config{
 			DataPath:      n.RaftDir,

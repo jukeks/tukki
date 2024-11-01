@@ -96,7 +96,7 @@ func main() {
 		}
 	}
 
-	n := replica.New(false, sstablePeers, db, *dbDir, *dbDir, fmt.Sprintf("localhost:%d", *raftPort))
+	n := replica.New(false, sstablePeers, db, *dbDir, *dbDir+"/raft", fmt.Sprintf("localhost:%d", *raftPort))
 	if err := n.Open(*nodeId, *inititialize, raftPeers); err != nil {
 		log.Fatalf("failed to open node: %v", err)
 	}
