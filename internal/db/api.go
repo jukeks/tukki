@@ -157,3 +157,9 @@ func (db *Database) handleWalSizeLimit() error {
 	}
 	return nil
 }
+
+func (db *Database) GetIterator(start, end string) (*Iterator, error) {
+	// indexes are not copy, TODO race condition
+	// same for memtable
+	return NewIterator(db.dbDir, start, end, db.ongoing.Memtable, db.getSegmentsSorted(), db.indexes)
+}

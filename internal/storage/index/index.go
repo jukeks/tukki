@@ -3,14 +3,21 @@ package index
 import (
 	"bufio"
 	"io"
+	"sort"
 
 	"github.com/jukeks/tukki/internal/storage/files"
 	"github.com/jukeks/tukki/internal/storage/marshalling"
 	indexv1 "github.com/jukeks/tukki/proto/gen/tukki/storage/index/v1"
 )
 
+type IndexEntry struct {
+	Key    string
+	Offset uint64
+}
+
 type Index struct {
-	Entries map[string]uint64
+	Entries   map[string]uint64
+	EntryList []IndexEntry
 }
 
 func OpenIndex(dbDir string, filename files.Filename) (*Index, error) {
@@ -22,6 +29,7 @@ func OpenIndex(dbDir string, filename files.Filename) (*Index, error) {
 	reader := bufio.NewReader(f)
 
 	entries := make(map[string]uint64)
+	entryList := make([]IndexEntry, 0)
 	for {
 		var record indexv1.IndexEntry
 		err := marshalling.ReadLengthPrefixedProtobufMessage(reader, &record)
@@ -32,10 +40,19 @@ func OpenIndex(dbDir string, filename files.Filename) (*Index, error) {
 			return &Index{}, err
 		}
 		entries[record.Key] = record.Offset
+		entryList = append(entryList, IndexEntry{
+			Key:    record.Key,
+			Offset: record.Offset,
+		})
 	}
 
+	sort.Slice(entryList, func(i, j int) bool {
+		return entryList[i].Key < entryList[j].Key
+	})
+
 	return &Index{
-		Entries: entries,
+		Entries:   entries,
+		EntryList: entryList,
 	}, nil
 }
 
