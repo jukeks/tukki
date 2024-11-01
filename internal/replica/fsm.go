@@ -30,6 +30,8 @@ func (f *fsm) Apply(l *raft.Log) interface{} {
 		return f.applySet(c.Key, c.Value)
 	case "delete":
 		return f.applyDelete(c.Key)
+	case "deleteRange":
+		return f.applyDeleteRange(c.Min, c.Max)
 	default:
 		panic(fmt.Sprintf("unrecognized command op: %s", c.Op))
 	}
@@ -53,6 +55,17 @@ func (f *fsm) applyDelete(key string) interface{} {
 		return err
 	}
 	return nil
+}
+
+func (f *fsm) applyDeleteRange(min, max string) interface{} {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	count, err := f.db.DeleteRange(min, max)
+	if err != nil {
+		f.logger.Printf("failed to apply delete range min %s max %s: %s", min, max, err)
+		return err
+	}
+	return count
 }
 
 type snapshot struct {

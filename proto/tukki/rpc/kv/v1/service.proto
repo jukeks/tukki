@@ -7,12 +7,19 @@ option go_package = "github.com/jukeks/tukki/rpc/kv";
 
 service KvService {
     rpc Query(QueryRequest) returns (QueryResponse) {}
+    rpc QueryRange(QueryRangeRequest) returns (stream QueryRangeResponse) {}
     rpc Set(SetRequest) returns (SetResponse) {}
     rpc Delete(DeleteRequest) returns (DeleteResponse) {}
+    rpc DeleteRange(DeleteRangeRequest) returns (DeleteRangeResponse) {}
 }
 
 message QueryRequest {
     string key = 1;
+}
+
+message QueryRangeRequest {
+    string min = 1;
+    string max = 2;
 }
 
 message SetRequest {
@@ -21,6 +28,11 @@ message SetRequest {
 
 message DeleteRequest {
     string key = 1;
+}
+
+message DeleteRangeRequest {
+    string min = 1;
+    string max = 2;
 }
 
 message KvPair {
@@ -39,10 +51,20 @@ message QueryResponse {
     }
 }
 
+message QueryRangeResponse {
+    KvPair pair = 1;
+}
+
+
 message SetResponse {
     Error error = 1;
 }
 
 message DeleteResponse {
     Error error = 1;
+}
+
+message DeleteRangeResponse {
+    Error error = 1;
+    uint64 deleted = 2;
 }

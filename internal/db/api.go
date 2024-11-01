@@ -203,27 +203,8 @@ type Pair struct {
 	Value string
 }
 
-func (db *Database) GetRange(start, end string) ([]Pair, error) {
-	cursor, err := db.GetCursorWithRange(start, end)
-	if err != nil {
-		return nil, err
-	}
-	defer cursor.Close()
-
-	var pairs []Pair
-	for {
-		entry, err := cursor.Next()
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return nil, err
-		}
-
-		pairs = append(pairs, Pair{Key: entry.Key, Value: entry.Value})
-	}
-
-	return pairs, nil
+type KeyValueIterator interface {
+	Next() (Pair, error)
 }
 
 func (db *Database) DeleteRange(start, end string) (int, error) {
