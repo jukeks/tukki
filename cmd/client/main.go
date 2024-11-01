@@ -118,8 +118,16 @@ func repl(client kvv1.KvServiceClient) {
 				fmt.Printf("failed to get range: %v (%v)\n", err, time.Since(start))
 				continue
 			}
-			for _, pair := range resp.Pairs {
-				fmt.Printf("%s: %s\n", pair.Key, pair.Value)
+			for {
+				msg, err := resp.Recv()
+				if err == io.EOF {
+					break
+				}
+				if err != nil {
+					fmt.Printf("failed to receive: %v\n", err)
+					break
+				}
+				fmt.Printf("key: %s, value: %s\n", msg.Pair.Key, msg.Pair.Value)
 			}
 		case "delete":
 			_, err := client.Delete(context.Background(), &kvv1.DeleteRequest{

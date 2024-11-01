@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/raft"
 
 	"github.com/jukeks/tukki/internal/db"
-	"github.com/jukeks/tukki/internal/grpc/kv"
 )
 
 const (
@@ -174,24 +173,10 @@ func (n *Node) Get(key string) (string, error) {
 	return n.db.Get(key)
 }
 
-// GetRange implements kv.DB.
-func (n *Node) GetRange(min string, max string) ([]kv.Pair, error) {
+func (n *Node) GetRange(min string, max string) (db.KeyValueIterator, error) {
 	n.mu.RLock()
 	defer n.mu.RUnlock()
-	dbPairs, err := n.db.GetRange(min, max)
-	if err != nil {
-		return nil, err
-	}
-
-	var pairs []kv.Pair
-	for _, dbPair := range dbPairs {
-		pairs = append(pairs, kv.Pair{
-			Key:   dbPair.Key,
-			Value: dbPair.Value,
-		})
-	}
-
-	return pairs, nil
+	return n.db.GetCursorWithRange(min, max)
 }
 
 // Set sets the value for the given key.

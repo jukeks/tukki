@@ -31,7 +31,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type KvServiceClient interface {
 	Query(ctx context.Context, in *QueryRequest, opts ...grpc.CallOption) (*QueryResponse, error)
-	QueryRange(ctx context.Context, in *QueryRangeRequest, opts ...grpc.CallOption) (*QueryRangeResponse, error)
+	QueryRange(ctx context.Context, in *QueryRangeRequest, opts ...grpc.CallOption) (KvService_QueryRangeClient, error)
 	Set(ctx context.Context, in *SetRequest, opts ...grpc.CallOption) (*SetResponse, error)
 	Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*DeleteResponse, error)
 	DeleteRange(ctx context.Context, in *DeleteRangeRequest, opts ...grpc.CallOption) (*DeleteRangeResponse, error)
@@ -54,13 +54,36 @@ func (c *kvServiceClient) Query(ctx context.Context, in *QueryRequest, opts ...g
 	return out, nil
 }
 
-func (c *kvServiceClient) QueryRange(ctx context.Context, in *QueryRangeRequest, opts ...grpc.CallOption) (*QueryRangeResponse, error) {
-	out := new(QueryRangeResponse)
-	err := c.cc.Invoke(ctx, KvService_QueryRange_FullMethodName, in, out, opts...)
+func (c *kvServiceClient) QueryRange(ctx context.Context, in *QueryRangeRequest, opts ...grpc.CallOption) (KvService_QueryRangeClient, error) {
+	stream, err := c.cc.NewStream(ctx, &KvService_ServiceDesc.Streams[0], KvService_QueryRange_FullMethodName, opts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &kvServiceQueryRangeClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type KvService_QueryRangeClient interface {
+	Recv() (*QueryRangeResponse, error)
+	grpc.ClientStream
+}
+
+type kvServiceQueryRangeClient struct {
+	grpc.ClientStream
+}
+
+func (x *kvServiceQueryRangeClient) Recv() (*QueryRangeResponse, error) {
+	m := new(QueryRangeResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 func (c *kvServiceClient) Set(ctx context.Context, in *SetRequest, opts ...grpc.CallOption) (*SetResponse, error) {
@@ -95,7 +118,7 @@ func (c *kvServiceClient) DeleteRange(ctx context.Context, in *DeleteRangeReques
 // for forward compatibility
 type KvServiceServer interface {
 	Query(context.Context, *QueryRequest) (*QueryResponse, error)
-	QueryRange(context.Context, *QueryRangeRequest) (*QueryRangeResponse, error)
+	QueryRange(*QueryRangeRequest, KvService_QueryRangeServer) error
 	Set(context.Context, *SetRequest) (*SetResponse, error)
 	Delete(context.Context, *DeleteRequest) (*DeleteResponse, error)
 	DeleteRange(context.Context, *DeleteRangeRequest) (*DeleteRangeResponse, error)
@@ -109,8 +132,8 @@ type UnimplementedKvServiceServer struct {
 func (UnimplementedKvServiceServer) Query(context.Context, *QueryRequest) (*QueryResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Query not implemented")
 }
-func (UnimplementedKvServiceServer) QueryRange(context.Context, *QueryRangeRequest) (*QueryRangeResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method QueryRange not implemented")
+func (UnimplementedKvServiceServer) QueryRange(*QueryRangeRequest, KvService_QueryRangeServer) error {
+	return status.Errorf(codes.Unimplemented, "method QueryRange not implemented")
 }
 func (UnimplementedKvServiceServer) Set(context.Context, *SetRequest) (*SetResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Set not implemented")
@@ -152,22 +175,25 @@ func _KvService_Query_Handler(srv interface{}, ctx context.Context, dec func(int
 	return interceptor(ctx, in, info, handler)
 }
 
-func _KvService_QueryRange_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryRangeRequest)
-	if err := dec(in); err != nil {
-		return nil, err
+func _KvService_QueryRange_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(QueryRangeRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
 	}
-	if interceptor == nil {
-		return srv.(KvServiceServer).QueryRange(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: KvService_QueryRange_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(KvServiceServer).QueryRange(ctx, req.(*QueryRangeRequest))
-	}
-	return interceptor(ctx, in, info, handler)
+	return srv.(KvServiceServer).QueryRange(m, &kvServiceQueryRangeServer{stream})
+}
+
+type KvService_QueryRangeServer interface {
+	Send(*QueryRangeResponse) error
+	grpc.ServerStream
+}
+
+type kvServiceQueryRangeServer struct {
+	grpc.ServerStream
+}
+
+func (x *kvServiceQueryRangeServer) Send(m *QueryRangeResponse) error {
+	return x.ServerStream.SendMsg(m)
 }
 
 func _KvService_Set_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -236,10 +262,6 @@ var KvService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _KvService_Query_Handler,
 		},
 		{
-			MethodName: "QueryRange",
-			Handler:    _KvService_QueryRange_Handler,
-		},
-		{
 			MethodName: "Set",
 			Handler:    _KvService_Set_Handler,
 		},
@@ -252,6 +274,12 @@ var KvService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _KvService_DeleteRange_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "QueryRange",
+			Handler:       _KvService_QueryRange_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "tukki/rpc/kv/v1/service.proto",
 }

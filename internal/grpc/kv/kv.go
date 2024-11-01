@@ -2,7 +2,9 @@ package kv
 
 import (
 	"context"
+	"io"
 
+	"github.com/jukeks/tukki/internal/db"
 	kvv1 "github.com/jukeks/tukki/proto/gen/tukki/rpc/kv/v1"
 )
 
@@ -13,7 +15,7 @@ type Pair struct {
 
 type DB interface {
 	Get(key string) (string, error)
-	GetRange(min, max string) ([]Pair, error)
+	GetRange(min, max string) (db.KeyValueIterator, error)
 	Set(key, value string) error
 	Delete(key string) error
 	DeleteRange(min, max string) (uint64, error)
@@ -40,21 +42,33 @@ func (s *KVServer) Query(ctx context.Context, req *kvv1.QueryRequest) (*kvv1.Que
 	}}}, nil
 }
 
-func (s *KVServer) QueryRange(ctx context.Context, req *kvv1.QueryRangeRequest) (*kvv1.QueryRangeResponse, error) {
-	pairs, err := s.db.GetRange(req.Min, req.Max)
+func (s *KVServer) QueryRange(req *kvv1.QueryRangeRequest, resp kvv1.KvService_QueryRangeServer) error {
+	cursor, err := s.db.GetRange(req.Min, req.Max)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	var kvPairs []*kvv1.KvPair
-	for _, pair := range pairs {
-		kvPairs = append(kvPairs, &kvv1.KvPair{
-			Key:   pair.Key,
-			Value: pair.Value,
+	for {
+		pair, err := cursor.Next()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+
+		err = resp.Send(&kvv1.QueryRangeResponse{
+			Pair: &kvv1.KvPair{
+				Key:   pair.Key,
+				Value: pair.Value,
+			},
 		})
+		if err != nil {
+			return err
+		}
 	}
 
-	return &kvv1.QueryRangeResponse{Pairs: kvPairs}, nil
+	return nil
 }
 
 func (s *KVServer) Set(ctx context.Context, req *kvv1.SetRequest) (*kvv1.SetResponse, error) {

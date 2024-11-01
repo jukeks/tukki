@@ -7,7 +7,7 @@ option go_package = "github.com/jukeks/tukki/rpc/kv";
 
 service KvService {
     rpc Query(QueryRequest) returns (QueryResponse) {}
-    rpc QueryRange(QueryRangeRequest) returns (QueryRangeResponse) {}
+    rpc QueryRange(QueryRangeRequest) returns (stream QueryRangeResponse) {}
     rpc Set(SetRequest) returns (SetResponse) {}
     rpc Delete(DeleteRequest) returns (DeleteResponse) {}
     rpc DeleteRange(DeleteRangeRequest) returns (DeleteRangeResponse) {}
@@ -52,7 +52,7 @@ message QueryResponse {
 }
 
 message QueryRangeResponse {
-    repeated KvPair pairs = 1;
+    KvPair pair = 1;
 }
 
 
