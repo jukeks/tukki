@@ -46,10 +46,6 @@ func OpenIndex(dbDir string, filename files.Filename) (*Index, error) {
 		})
 	}
 
-	sort.Slice(entryList, func(i, j int) bool {
-		return entryList[i].Key < entryList[j].Key
-	})
-
 	return &Index{
 		Entries:   entries,
 		EntryList: entryList,
@@ -75,11 +71,23 @@ func NewIndexWriter(writer io.WriteCloser) *IndexWriter {
 type OffsetMap map[string]uint64
 
 func (w *IndexWriter) WriteFromOffsets(offsets OffsetMap) error {
-	bw := bufio.NewWriter(w.writer)
+	offsetList := make([]IndexEntry, 0, len(offsets))
 	for key, offset := range offsets {
-		record := indexv1.IndexEntry{
+		offsetList = append(offsetList, IndexEntry{
 			Key:    key,
 			Offset: offset,
+		})
+	}
+
+	sort.Slice(offsetList, func(i, j int) bool {
+		return offsetList[i].Key < offsetList[j].Key
+	})
+
+	bw := bufio.NewWriter(w.writer)
+	for _, entry := range offsetList {
+		record := indexv1.IndexEntry{
+			Key:    entry.Key,
+			Offset: entry.Offset,
 		}
 		_, err := marshalling.WriteLengthPrefixedProtobufMessage(bw, &record)
 		if err != nil {
