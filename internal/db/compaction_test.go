@@ -63,7 +63,7 @@ func TestCompactSegments(t *testing.T) {
 		segmentIds[i] = segment.Id
 	}
 
-	if err := db.CompactSegments(160*1024*1024, segmentIds...); err != nil {
+	if err := db.Compact(); err != nil {
 		t.Fatalf("failed to compact segments: %v", err)
 	}
 
@@ -94,7 +94,9 @@ func TestDecideMergedSegments(t *testing.T) {
 		{Id: 4, Size: 400},
 	}
 
-	toMerge := DecideMergedSegments(500, sgs)
+	toMerge := DecideMergedSegments(func(size int64) bool {
+		return size < 500
+	}, sgs)
 	if len(toMerge) != 4 {
 		t.Fatalf("expected 4 merged segments, got %v", toMerge)
 	}

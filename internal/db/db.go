@@ -367,8 +367,6 @@ func (db *Database) CompactSegments(targetSize uint64, segmentIds ...segments.Se
 
 	// delete freed segment files
 	for _, segment := range op.SegmentsToCompact() {
-		log.Printf("deleting segment's files: %s %s %s",
-			segment.SegmentFile, segment.MembersFile, segment.IndexFile)
 		files.RemoveFile(db.dbDir, segment.SegmentFile)
 		files.RemoveFile(db.dbDir, segment.MembersFile)
 		files.RemoveFile(db.dbDir, segment.IndexFile)

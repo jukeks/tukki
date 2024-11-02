@@ -54,21 +54,16 @@ func DecideMergedSegments(criteria CompactionCriteria, segmentList []CompactionS
 	for len(segmentList) >= 4 {
 		size := segmentList[0].Size
 		if !criteria(size) {
-			log.Printf("segment %d is already larger than target size: %s",
-				segmentList[0].Id, bytesToMegaBytes(size))
 			segmentList = segmentList[1:]
-			log.Printf("segmentList: %v", segmentList)
 			continue
 		}
 
 		nextSmallSegments := []segments.SegmentId{segmentList[0].Id}
 		for _, sg := range segmentList[1:] {
 			if !criteria(sg.Size) {
-				log.Printf("segment %d too large: %s", sg.Id, bytesToMegaBytes(sg.Size))
 				break
 			}
 
-			log.Printf("segment %d is small enough: %s", sg.Id, bytesToMegaBytes(sg.Size))
 			nextSmallSegments = append(nextSmallSegments, sg.Id)
 		}
 
@@ -123,7 +118,7 @@ func (db *Database) findSegmentsToMerge(criteria CompactionCriteria) ([]segments
 	return DecideMergedSegments(criteria, compactionInfo), nil
 }
 
-func (db *Database) Compact() {
+func (db *Database) Compact() error {
 	for _, criteria := range compactionCriterias {
 		segmentIds, err := db.findSegmentsToMerge(criteria.Criteria)
 		if err != nil {
@@ -138,6 +133,9 @@ func (db *Database) Compact() {
 		err = db.CompactSegments(uint64(criteria.TargetSize), segmentIds...)
 		if err != nil {
 			logger.Printf("error merging segments: %v", err)
+			return err
 		}
 	}
+
+	return nil
 }
