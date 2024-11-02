@@ -18,7 +18,7 @@ type Cursor struct {
 	indexes        map[segments.SegmentId]*index.Index
 	opened         bool
 	memtable       memtable.Memtable
-	iterator       keyvalue.Iterator
+	iterator       *keyvalue.Iterator
 
 	start string
 	end   string

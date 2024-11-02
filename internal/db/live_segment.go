@@ -18,11 +18,11 @@ func NewLiveSegment(id segments.SegmentId) *LiveSegment {
 	return &LiveSegment{
 		Segment: segments.SegmentMetadata{
 			Id:          id,
-			SegmentFile: getSegmentFilename(id),
-			MembersFile: getMembersFilename(id),
-			IndexFile:   getIndexFilename(id),
+			SegmentFile: segments.GetSegmentFilename(id),
+			MembersFile: segments.GetMembersFilename(id),
+			IndexFile:   segments.GetIndexFilename(id),
 		},
-		WalFilename: getWalFilename(id),
+		WalFilename: segments.GetWalFilename(id),
 	}
 }
 

@@ -1,6 +1,7 @@
 package sstable
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -42,9 +43,15 @@ func (s *sstableSubIterator) Progress() {
 	s.current, s.err = s.reader.Next()
 }
 
+var ErrIndexNotProvided = errors.New("index not provided")
+
 func (s *sstableSubIterator) Seek(key string) error {
 	found := false
 	offset := uint64(0)
+	if s.index == nil {
+		return ErrIndexNotProvided
+	}
+
 	for _, entry := range s.index.EntryList {
 		if entry.Key >= key {
 			offset = entry.Offset

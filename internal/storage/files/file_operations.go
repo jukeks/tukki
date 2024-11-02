@@ -38,3 +38,13 @@ func FileExists(dbDir string, filename Filename) bool {
 	_, err := os.Stat(path)
 	return !os.IsNotExist(err)
 }
+
+func FileSize(dbDir string, filename Filename) (int64, error) {
+	path := GetPath(dbDir, filename)
+	info, err := os.Stat(path)
+	if err != nil {
+		return 0, err
+	}
+
+	return info.Size(), nil
+}
