@@ -188,6 +188,7 @@ Segment journal records creation of new segments and merging existing segments.
 Segment journal is read at startup to find all segments and possible incomplete
 operations.
 
-### Segment merging
+### Compaction
 
-Segment merging is not yet implemented.
+tukki uses size tiered approach to merging segments targetting between 160 MiB
+1600 MiB segment files.
