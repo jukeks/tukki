@@ -19,8 +19,10 @@ func defaultDatabaseDir() string {
 }
 
 var (
-	port  = flag.Int("port", 50051, "The server port")
-	dbDir = flag.String("db-dir", defaultDatabaseDir(), "The directory to store the database")
+	port     = flag.Int("port", 50051, "The server port")
+	dbDir    = flag.String("db-dir", defaultDatabaseDir(), "The directory to store the database")
+	metadata = flag.Bool("metadata", false, "Print metadata")
+	compact  = flag.Bool("compact", false, "Compact the database")
 )
 
 func main() {
@@ -34,6 +36,16 @@ func main() {
 	db, err := db.OpenDatabase(*dbDir)
 	if err != nil {
 		log.Fatalf("failed to open database: %v", err)
+	}
+
+	if *metadata {
+		db.PrintMetadata()
+		return
+	}
+
+	if *compact {
+		db.Compact()
+		return
 	}
 
 	ls, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", *port))

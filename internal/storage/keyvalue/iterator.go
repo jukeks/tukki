@@ -21,10 +21,10 @@ type Iterator struct {
 	usableIterators  []SubIterator
 }
 
-func NewIterator(min, max string, returnTombstones bool, iterators ...SubIterator) (Iterator, error) {
+func NewIterator(min, max string, returnTombstones bool, iterators ...SubIterator) (*Iterator, error) {
 	usableIterators := make([]SubIterator, 0, len(iterators))
 	usableIterators = append(usableIterators, iterators...)
-	i := Iterator{
+	i := &Iterator{
 		min:              min,
 		max:              max,
 		returnTombstones: returnTombstones,
@@ -39,7 +39,7 @@ func NewIterator(min, max string, returnTombstones bool, iterators ...SubIterato
 				if err == io.EOF {
 					continue
 				}
-				return Iterator{}, fmt.Errorf("failed to seek to min key: %w", err)
+				return nil, fmt.Errorf("failed to seek to min key: %w", err)
 			}
 
 			i.usableIterators = append(i.usableIterators, iter)
@@ -78,7 +78,7 @@ func (i *Iterator) Next() (IteratorEntry, error) {
 			current, err := iter.Get()
 			if err != nil {
 				if err != io.EOF {
-					return IteratorEntry{}, fmt.Errorf("failed to read next entry: %w", err)
+					return IteratorEntry{}, fmt.Errorf("failed to read next entry from %+v: %w", iter, err)
 				}
 				continue
 			}

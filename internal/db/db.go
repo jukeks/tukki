@@ -1,7 +1,6 @@
 package db
 
 import (
-	"fmt"
 	"log"
 	"sync"
 
@@ -25,6 +24,9 @@ type Database struct {
 	ongoing *LiveSegment
 
 	config Config
+
+	compactorStop chan bool
+	nextOpId      segments.OperationId
 }
 
 type Config struct {
@@ -73,8 +75,10 @@ func OpenDatabaseWithConfig(dbDir string, config Config) (*Database, error) {
 		members:          make(map[segments.SegmentId]*segmentmembers.SegmentMembers),
 		indexes:          make(map[segments.SegmentId]*index.Index),
 		operations:       currentSegments.Operations,
+		nextOpId:         currentSegments.NextId,
 		ongoing:          ongoing,
 		config:           config,
+		compactorStop:    make(chan bool),
 	}
 
 	if !bootstrapped {
@@ -109,35 +113,9 @@ func OpenDatabaseWithConfig(dbDir string, config Config) (*Database, error) {
 		db.indexes[segment.Id] = idx
 	}
 
+	go db.compactor()
+
 	return db, nil
-}
-
-func getWalFilename(id segments.SegmentId) files.Filename {
-	return files.Filename(fmt.Sprintf("wal-%d.journal", id))
-}
-
-func getSegmentFilename(id segments.SegmentId) files.Filename {
-	return files.Filename(fmt.Sprintf("segment-%d", id))
-}
-
-func getMergedSegmentFilename(a, b segments.SegmentId) files.Filename {
-	return files.Filename(fmt.Sprintf("segment-%d-%d", a, b))
-}
-
-func getMembersFilename(id segments.SegmentId) files.Filename {
-	return files.Filename(fmt.Sprintf("members-%d", id))
-}
-
-func getMergedMembersFilename(a, b segments.SegmentId) files.Filename {
-	return files.Filename(fmt.Sprintf("members-%d-%d", a, b))
-}
-
-func getIndexFilename(id segments.SegmentId) files.Filename {
-	return files.Filename(fmt.Sprintf("index-%d", id))
-}
-
-func getMergedIndexFilename(a, b segments.SegmentId) files.Filename {
-	return files.Filename(fmt.Sprintf("index-%d-%d", a, b))
 }
 
 func (db *Database) GetOnGoingSegment() *LiveSegment {
@@ -149,14 +127,9 @@ func (db *Database) getNextSegmentId() segments.SegmentId {
 }
 
 func (db *Database) getNextOperationId() segments.OperationId {
-	var maxId segments.OperationId
-	for id := range db.operations {
-		if id > maxId {
-			maxId = id
-		}
-	}
+	db.nextOpId++
 
-	return maxId + 1
+	return db.nextOpId - 1
 }
 
 func lsToOs(ls *LiveSegment) *segments.OpenSegment {
@@ -265,6 +238,7 @@ func (db *Database) SealCurrentSegment() (*LiveSegment, error) {
 }
 
 func (db *Database) Close() error {
+	db.compactorStop <- true
 	err := db.ongoing.Close()
 	if err != nil {
 		log.Printf("failed to close wal: %v", err)
@@ -281,9 +255,9 @@ func (db *Database) MergeSegments(a, b segments.SegmentId) error {
 
 	mergedSegment := segments.SegmentMetadata{
 		Id:          segmentB.Id,
-		SegmentFile: getMergedSegmentFilename(segmentA.Id, segmentB.Id),
-		MembersFile: getMergedMembersFilename(segmentA.Id, segmentB.Id),
-		IndexFile:   getMergedIndexFilename(segmentA.Id, segmentB.Id),
+		SegmentFile: segments.GetMergedSegmentFilename(segmentA.Id, segmentB.Id),
+		MembersFile: segments.GetMergedMembersFilename(segmentA.Id, segmentB.Id),
+		IndexFile:   segments.GetMergedIndexFilename(segmentA.Id, segmentB.Id),
 	}
 
 	op := segments.NewMergeSegmentsOperation(db.getNextOperationId(), db.dbDir, []segments.SegmentMetadata{segmentA, segmentB}, mergedSegment)
@@ -326,4 +300,87 @@ func (db *Database) MergeSegments(a, b segments.SegmentId) error {
 	delete(db.operations, op.Id())
 
 	return nil
+}
+
+func (db *Database) CompactSegments(targetSize uint64, segmentIds ...segments.SegmentId) error {
+	segmentsToCompact := make([]segments.SegmentMetadata, 0, len(segmentIds))
+	db.mu.Lock()
+	for _, id := range segmentIds {
+		segmentsToCompact = append(segmentsToCompact, db.segments[id])
+	}
+	db.mu.Unlock()
+
+	op := segments.NewCompactSegmentsOperation(db.getNextOperationId(), db.dbDir, segmentsToCompact, targetSize)
+	startEntry := op.StartJournalEntry()
+	err := db.operationJournal.Write(startEntry)
+	if err != nil {
+		log.Printf("failed to write journal entry: %v", err)
+		return err
+	}
+	db.mu.Lock()
+	db.operations[op.Id()] = op
+	db.mu.Unlock()
+
+	err = op.Execute()
+	if err != nil {
+		log.Printf("failed to execute operation: %v", err)
+		return err
+	}
+
+	completedEntry := op.CompletedJournalEntry()
+	err = db.operationJournal.Write(completedEntry)
+	if err != nil {
+		log.Printf("failed to write journal entry: %v", err)
+		return err
+	}
+
+	log.Printf("compacted segments: %v", segmentIds)
+	log.Printf("new segments: %v", op.NewSegments())
+
+	db.mu.Lock()
+	delete(db.operations, op.Id())
+
+	for _, segment := range op.SegmentsToCompact() {
+		delete(db.members, segment.Id)
+		delete(db.segments, segment.Id)
+		delete(db.indexes, segment.Id)
+	}
+
+	for _, segment := range op.NewSegments() {
+		members, err := segmentmembers.OpenSegmentMembers(db.dbDir, segment.MembersFile)
+		if err != nil {
+			log.Printf("failed to open segment members: %v", err)
+			return err
+		}
+
+		idx, err := index.OpenIndex(db.dbDir, segment.IndexFile)
+		if err != nil {
+			log.Printf("failed to open index: %v", err)
+			return err
+		}
+
+		db.members[segment.Id] = members
+		db.segments[segment.Id] = segment
+		db.indexes[segment.Id] = idx
+	}
+	db.mu.Unlock()
+
+	// delete freed segment files
+	for _, segment := range op.SegmentsToCompact() {
+		files.RemoveFile(db.dbDir, segment.SegmentFile)
+		files.RemoveFile(db.dbDir, segment.MembersFile)
+		files.RemoveFile(db.dbDir, segment.IndexFile)
+	}
+
+	return nil
+}
+
+func (db *Database) PrintMetadata() {
+	for _, segment := range db.getSegmentsSorted() {
+		size, err := getSegmentFileSize(db.dbDir, segment)
+		if err != nil {
+			log.Printf("failed to get segment file size: %v", err)
+		}
+		log.Printf("segment %d: %+v size: %s", segment.Id, segment, bytesToMegaBytes(size))
+	}
 }

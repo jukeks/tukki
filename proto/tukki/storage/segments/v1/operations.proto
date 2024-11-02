@@ -26,17 +26,31 @@ message MergeSegments {
     repeated Segment segments_to_merge = 2;
 }
 
+message CompactSegments {
+    repeated Segment segments_to_compact = 1;
+    uint64 target_segment_size = 2;
+}
+
 message SegmentOperation {
     uint64 id = 1;
     oneof operation {
         AddSegment add = 2;
         MergeSegments merge = 3;
+        CompactSegments compact = 4;
     }
+}
+
+message SegmentOperationCompleted {
+    uint64 id = 1;
+
+    repeated Segment added = 2;
+    repeated Segment freed = 3;
 }
 
 message SegmentOperationJournalEntry {
     oneof entry {
         SegmentOperation started = 1;
-        uint64 completed = 2;
+        uint64 completed = 2 [deprecated = true];
+        SegmentOperationCompleted completed_v2 = 3;
     }
 }

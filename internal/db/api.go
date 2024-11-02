@@ -75,19 +75,19 @@ func (db *Database) getSegmentsSorted() []segments.SegmentMetadata {
 }
 
 func (db *Database) getSegmentsSortedUnlocked() []segments.SegmentMetadata {
-	keys := make([]segments.SegmentId, len(db.segments))
+	ids := make([]segments.SegmentId, len(db.segments))
 	i := 0
-	for k := range db.segments {
-		keys[i] = k
+	for segmentId := range db.segments {
+		ids[i] = segmentId
 		i++
 	}
-	sort.Slice(keys, func(i, j int) bool {
-		return keys[i] > keys[j]
+	sort.Slice(ids, func(i, j int) bool {
+		return ids[i] > ids[j]
 	})
 
-	segments := make([]segments.SegmentMetadata, len(keys))
-	for i, k := range keys {
-		segments[i] = db.segments[k]
+	segments := make([]segments.SegmentMetadata, len(ids))
+	for i, segmentId := range ids {
+		segments[i] = db.segments[segmentId]
 	}
 
 	return segments

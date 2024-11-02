@@ -53,6 +53,43 @@ func (w *SSTableWriter) WriteFromIterator(iterator keyvalue.KeyValueIterator) er
 	return nil
 }
 
+func (w *SSTableWriter) WriteFromIteratorUntil(iterator keyvalue.KeyValueIterator, maxSize uint64) error {
+	writer := bufio.NewWriter(w.writer)
+
+	var offset uint64 = 0
+	for {
+		entry, err := iterator.Next()
+		if err != nil {
+			if err == io.EOF {
+				err := writer.Flush()
+				if err != nil {
+					return fmt.Errorf("failed to flush: %w", err)
+				}
+
+				return io.EOF
+			}
+			return fmt.Errorf("failed to read next entry: %w", err)
+		}
+
+		len, err := w.Write(entry)
+		if err != nil {
+			return fmt.Errorf("failed to write entry: %w", err)
+		}
+		w.offsetMap[entry.Key] = offset
+		offset += uint64(len)
+		if offset >= maxSize {
+			break
+		}
+	}
+
+	err := writer.Flush()
+	if err != nil {
+		return fmt.Errorf("failed to flush: %w", err)
+	}
+
+	return nil
+}
+
 func (w *SSTableWriter) WrittenOffsets() index.OffsetMap {
 	return w.offsetMap
 }

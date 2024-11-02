@@ -1,8 +1,10 @@
 package sstable
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 
 	"github.com/jukeks/tukki/internal/storage/index"
@@ -40,11 +42,20 @@ func (s *sstableSubIterator) Get() (keyvalue.IteratorEntry, error) {
 
 func (s *sstableSubIterator) Progress() {
 	s.current, s.err = s.reader.Next()
+	if s.err != nil && s.err != io.EOF {
+		log.Printf("failed to read next entry from file %s: %v", s.segmentFile.Name(), s.err)
+	}
 }
+
+var ErrIndexNotProvided = errors.New("index not provided")
 
 func (s *sstableSubIterator) Seek(key string) error {
 	found := false
 	offset := uint64(0)
+	if s.index == nil {
+		return ErrIndexNotProvided
+	}
+
 	for _, entry := range s.index.EntryList {
 		if entry.Key >= key {
 			offset = entry.Offset
