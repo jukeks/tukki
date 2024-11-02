@@ -78,7 +78,7 @@ func (i *Iterator) Next() (IteratorEntry, error) {
 			current, err := iter.Get()
 			if err != nil {
 				if err != io.EOF {
-					return IteratorEntry{}, fmt.Errorf("failed to read next entry: %w", err)
+					return IteratorEntry{}, fmt.Errorf("failed to read next entry from %+v: %w", iter, err)
 				}
 				continue
 			}

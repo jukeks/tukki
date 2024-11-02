@@ -164,7 +164,6 @@ func (o *CompactSegmentsOperation) Execute() error {
 
 		members := segmentmembers.NewSegmentMembers(uint(len(offsets)))
 		for key := range offsets {
-			log.Printf("Adding key %s to segment %d", key, newId)
 			members.Add(key)
 		}
 		err = members.Save(o.dbDir, newSegment.MembersFile)

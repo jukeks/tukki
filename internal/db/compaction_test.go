@@ -84,3 +84,22 @@ func TestCompactSegments(t *testing.T) {
 		Pair{Key: "e", Value: "5"},
 		Pair{Key: "f", Value: "6"})
 }
+
+func TestDecideMergedSegments(t *testing.T) {
+	sgs := []CompactionSegment{
+		{Id: 0, Size: 1000},
+		{Id: 1, Size: 200},
+		{Id: 2, Size: 200},
+		{Id: 3, Size: 200},
+		{Id: 4, Size: 400},
+	}
+
+	toMerge := DecideMergedSegments(500, sgs)
+	if len(toMerge) != 4 {
+		t.Fatalf("expected 4 merged segments, got %v", toMerge)
+	}
+
+	if toMerge[0] != 4 || toMerge[1] != 3 || toMerge[2] != 2 || toMerge[3] != 1 {
+		t.Fatalf("expected merged segments to be 4, 3, 2, 1, got %v", toMerge)
+	}
+}

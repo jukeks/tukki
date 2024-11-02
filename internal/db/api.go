@@ -32,14 +32,12 @@ func (db *Database) getFromSegments(key string) (string, error) {
 			// this looks unnecessary right now, but eventually all segment
 			// indexes might not be in memory, so it's beneficial to check
 			// if the key is in the segment before reading the index
-			log.Printf("key %s not in segment %d members", key, segment.Id)
 			continue
 		}
 
 		offset, found := db.indexes[segment.Id].Entries[key]
 		if !found {
 			// false positive, key is not in segment
-			log.Printf("key %s not in segment %d index", key, segment.Id)
 			continue
 		}
 

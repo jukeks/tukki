@@ -39,6 +39,7 @@ type CurrentSegments struct {
 	Ongoing    *OpenSegment
 	Segments   map[SegmentId]SegmentMetadata
 	Operations map[OperationId]SegmentOperation
+	NextId     OperationId
 }
 
 func readOperationJournal(r *journal.JournalReader) (
@@ -48,6 +49,7 @@ func readOperationJournal(r *journal.JournalReader) (
 	operations := make(map[OperationId]SegmentOperation)
 	segments := make(map[SegmentId]SegmentMetadata)
 	var ongoing *OpenSegment
+	biggestId := OperationId(0)
 
 	for {
 		journalEntry := &segmentsv1.SegmentOperationJournalEntry{}
@@ -64,10 +66,18 @@ func readOperationJournal(r *journal.JournalReader) (
 			started := journalEntry.GetStarted()
 			operation := segmentOperationFromProto(started)
 			operations[operation.Id()] = operation
+			if operation.Id() > biggestId {
+				biggestId = operation.Id()
+			}
 		case *segmentsv1.SegmentOperationJournalEntry_Completed:
 			completedId := OperationId(journalEntry.GetCompleted())
 			completedV2 := journalEntry.GetCompletedV2()
+			if completedV2 != nil {
+				completedId = OperationId(completedV2.Id)
+			}
+
 			operation := operations[completedId]
+
 			switch op := operation.(type) {
 			case *AddSegmentOperation:
 				if op.completingSegment != nil {
@@ -78,16 +88,27 @@ func readOperationJournal(r *journal.JournalReader) (
 				delete(segments, op.segmentsToMerge[0].Id)
 				delete(segments, op.segmentsToMerge[1].Id)
 				segments[op.mergedSegment.Id] = op.mergedSegment
+			}
+			delete(operations, completedId)
+		case *segmentsv1.SegmentOperationJournalEntry_CompletedV2:
+			completedV2 := journalEntry.GetCompletedV2()
+			operation := operations[OperationId(completedV2.Id)]
+			switch op := operation.(type) {
+			case *AddSegmentOperation:
+				if op.completingSegment != nil {
+					segments[op.completingSegment.Segment.Id] = op.completingSegment.Segment
+				}
+				ongoing = op.newSegment
 			case *CompactSegmentsOperation:
 				for _, segment := range completedV2.Freed {
 					delete(segments, SegmentId(segment.Id))
 				}
 				for _, segment := range completedV2.Added {
-					segments[SegmentId(segment.Id)] = *pbToSegmentMetadata(segment)
+					mSegment := pbToSegmentMetadata(segment)
+					segments[mSegment.Id] = *mSegment
 				}
 			}
-
-			delete(operations, completedId)
+			delete(operations, OperationId(completedV2.Id))
 		}
 	}
 
@@ -95,6 +116,7 @@ func readOperationJournal(r *journal.JournalReader) (
 		Ongoing:    ongoing,
 		Segments:   segments,
 		Operations: operations,
+		NextId:     biggestId + 1,
 	}, nil
 }
 

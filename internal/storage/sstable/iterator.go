@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 
 	"github.com/jukeks/tukki/internal/storage/index"
@@ -41,6 +42,9 @@ func (s *sstableSubIterator) Get() (keyvalue.IteratorEntry, error) {
 
 func (s *sstableSubIterator) Progress() {
 	s.current, s.err = s.reader.Next()
+	if s.err != nil && s.err != io.EOF {
+		log.Printf("failed to read next entry from file %s: %v", s.segmentFile.Name(), s.err)
+	}
 }
 
 var ErrIndexNotProvided = errors.New("index not provided")

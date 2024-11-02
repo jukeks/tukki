@@ -3,7 +3,6 @@ package db
 import (
 	"fmt"
 	"log"
-	"math"
 	"sort"
 	"time"
 
@@ -13,11 +12,13 @@ import (
 
 var logger = log.New(log.Writer(), "compactor: ", log.LstdFlags)
 
+const TargetSegmentSize = 160 * 1024 * 1024
+
 func (db *Database) compactor() {
 	for {
 		select {
 		case <-time.After(30 * time.Second):
-			db.compact()
+			db.Compact()
 		case <-db.compactorStop:
 			logger.Printf("compactor stopped")
 			return
@@ -29,55 +30,91 @@ func getSegmentFileSize(dbDir string, segment segments.SegmentMetadata) (int64, 
 	return files.FileSize(dbDir, segment.SegmentFile)
 }
 
-func getOptimalSegmentCountFor(totalSize int64) int {
-	return int(math.Log2(float64(totalSize))) + 1
-}
-
-func getTotalSize(dbDir string, segments []segments.SegmentMetadata) (int64, error) {
-	totalSize := int64(0)
-	for _, segment := range segments {
-		size, err := getSegmentFileSize(dbDir, segment)
-		if err != nil {
-			return 0, err
-		}
-		totalSize += size
-	}
-	return totalSize, nil
-}
-
-func (db *Database) findSegmentsToMerge() ([]segments.SegmentId, error) {
-	segmentsToConsider := db.getSegmentsSorted()
-	segmentCount := len(segmentsToConsider)
-
-	if segmentCount < 2 {
-		logger.Printf("not enough segments to merge")
-		return nil, nil
-	}
-
-	// if the segments are too small, don't merge
-	totalSize, err := getTotalSize(db.dbDir, segmentsToConsider)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get total size of segments: %w", err)
-	}
-
-	optimalCount := getOptimalSegmentCountFor(totalSize)
-	if optimalCount > segmentCount {
-		logger.Printf("no need to merge yet: %d segments, total size %d MiB",
-			segmentCount, totalSize/1024/1024)
-		return nil, nil
-	}
-
-	// consider last two
-	toMerge := segmentsToConsider[len(segmentsToConsider)-2:]
-
-	ids := []segments.SegmentId{toMerge[0].Id, toMerge[1].Id}
-	// sort so that we return the smallest id first
-	sort.Slice(ids, func(i, j int) bool {
-		return ids[i] < ids[j]
+func (db *Database) getSegmentsReverseSorted() []segments.SegmentMetadata {
+	segments := db.getSegmentsSorted()
+	sort.Slice(segments, func(i, j int) bool {
+		return segments[i].Id < segments[j].Id
 	})
-
-	return ids, nil
+	return segments
 }
 
-func (db *Database) compact() {
+func bytesToMegaBytes(bytes int64) string {
+	return fmt.Sprintf("%d MiB", bytes/1024/1024)
+}
+
+type CompactionSegment struct {
+	Id   segments.SegmentId
+	Size int64
+}
+
+func DecideMergedSegments(targetSize int64, segmentList []CompactionSegment) []segments.SegmentId {
+	for len(segmentList) >= 4 {
+		size := segmentList[0].Size
+		if size > targetSize {
+			log.Printf("segment %d is already larger than target size: %s",
+				segmentList[0].Id, bytesToMegaBytes(size))
+			segmentList = segmentList[1:]
+			log.Printf("segmentList: %v", segmentList)
+			continue
+		}
+
+		nextSmallSegments := []segments.SegmentId{segmentList[0].Id}
+		for _, sg := range segmentList[1:] {
+			if sg.Size > targetSize {
+				log.Printf("segment %d too large: %s", sg.Id, bytesToMegaBytes(sg.Size))
+				break
+			}
+
+			log.Printf("segment %d is small enough: %s", sg.Id, bytesToMegaBytes(sg.Size))
+			nextSmallSegments = append(nextSmallSegments, sg.Id)
+		}
+
+		if len(nextSmallSegments) >= 4 {
+			// latest first
+			sort.Slice(nextSmallSegments, func(i, j int) bool {
+				return nextSmallSegments[i] > nextSmallSegments[j]
+			})
+
+			return nextSmallSegments
+		}
+
+		break
+	}
+
+	return nil
+}
+
+func (db *Database) findSegmentsToMerge(targetSize int64) ([]segments.SegmentId, error) {
+	sgs := db.getSegmentsReverseSorted()
+	compactionInfo := make([]CompactionSegment, 0, len(sgs))
+	for _, sg := range sgs {
+		size, err := getSegmentFileSize(db.dbDir, sg)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get segment file size: %w", err)
+		}
+
+		compactionInfo = append(compactionInfo, CompactionSegment{
+			Id:   sg.Id,
+			Size: size,
+		})
+	}
+	return DecideMergedSegments(targetSize, compactionInfo), nil
+}
+
+func (db *Database) Compact() {
+	segmentIds, err := db.findSegmentsToMerge(TargetSegmentSize)
+	if err != nil {
+		logger.Printf("error finding segments to merge: %v", err)
+		return
+	}
+	if len(segmentIds) == 0 {
+		logger.Printf("no segments to merge")
+		return
+	}
+
+	logger.Printf("merging segments: %v", segmentIds)
+	err = db.CompactSegments(TargetSegmentSize, segmentIds...)
+	if err != nil {
+		logger.Printf("error merging segments: %v", err)
+	}
 }

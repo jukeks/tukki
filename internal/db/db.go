@@ -4,6 +4,7 @@ import (
 	"log"
 	"sync"
 
+	"github.com/jukeks/tukki/internal/storage/files"
 	"github.com/jukeks/tukki/internal/storage/index"
 	"github.com/jukeks/tukki/internal/storage/journal"
 	"github.com/jukeks/tukki/internal/storage/segmentmembers"
@@ -25,6 +26,7 @@ type Database struct {
 	config Config
 
 	compactorStop chan bool
+	nextOpId      segments.OperationId
 }
 
 type Config struct {
@@ -73,6 +75,7 @@ func OpenDatabaseWithConfig(dbDir string, config Config) (*Database, error) {
 		members:          make(map[segments.SegmentId]*segmentmembers.SegmentMembers),
 		indexes:          make(map[segments.SegmentId]*index.Index),
 		operations:       currentSegments.Operations,
+		nextOpId:         currentSegments.NextId,
 		ongoing:          ongoing,
 		config:           config,
 		compactorStop:    make(chan bool),
@@ -124,14 +127,9 @@ func (db *Database) getNextSegmentId() segments.SegmentId {
 }
 
 func (db *Database) getNextOperationId() segments.OperationId {
-	var maxId segments.OperationId
-	for id := range db.operations {
-		if id > maxId {
-			maxId = id
-		}
-	}
+	db.nextOpId++
 
-	return maxId + 1
+	return db.nextOpId - 1
 }
 
 func lsToOs(ls *LiveSegment) *segments.OpenSegment {
@@ -336,8 +334,10 @@ func (db *Database) CompactSegments(targetSize uint64, segmentIds ...segments.Se
 		return err
 	}
 
+	log.Printf("compacted segments: %v", segmentIds)
+	log.Printf("new segments: %v", op.NewSegments())
+
 	db.mu.Lock()
-	defer db.mu.Unlock()
 	delete(db.operations, op.Id())
 
 	for _, segment := range op.SegmentsToCompact() {
@@ -363,6 +363,26 @@ func (db *Database) CompactSegments(targetSize uint64, segmentIds ...segments.Se
 		db.segments[segment.Id] = segment
 		db.indexes[segment.Id] = idx
 	}
+	db.mu.Unlock()
+
+	// delete freed segment files
+	for _, segment := range op.SegmentsToCompact() {
+		log.Printf("deleting segment's files: %s %s %s",
+			segment.SegmentFile, segment.MembersFile, segment.IndexFile)
+		files.RemoveFile(db.dbDir, segment.SegmentFile)
+		files.RemoveFile(db.dbDir, segment.MembersFile)
+		files.RemoveFile(db.dbDir, segment.IndexFile)
+	}
 
 	return nil
+}
+
+func (db *Database) PrintMetadata() {
+	for _, segment := range db.getSegmentsSorted() {
+		size, err := getSegmentFileSize(db.dbDir, segment)
+		if err != nil {
+			log.Printf("failed to get segment file size: %v", err)
+		}
+		log.Printf("segment %d: %+v size: %s", segment.Id, segment, bytesToMegaBytes(size))
+	}
 }
