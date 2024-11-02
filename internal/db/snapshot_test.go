@@ -19,7 +19,10 @@ func TestSnapshots(t *testing.T) {
 		t.Fatalf("failed to set key1: %v", err)
 	}
 
-	ss := db.Snapshot()
+	ss, err := db.Snapshot()
+	if err != nil {
+		t.Fatalf("failed to create snapshot: %v", err)
+	}
 	if ss == nil {
 		t.Fatalf("snapshot is nil")
 	}
@@ -36,7 +39,10 @@ func TestMarshalling(t *testing.T) {
 		t.Fatalf("failed to set key1: %v", err)
 	}
 
-	ss := db.Snapshot()
+	ss, err := db.Snapshot()
+	if err != nil {
+		t.Fatalf("failed to create snapshot: %v", err)
+	}
 	if ss == nil {
 		t.Fatalf("snapshot is nil")
 	}
@@ -67,7 +73,10 @@ func TestRestore(t *testing.T) {
 		t.Fatalf("failed to set key1: %v", err)
 	}
 
-	ss := db.Snapshot()
+	ss, err := db.Snapshot()
+	if err != nil {
+		t.Fatalf("failed to create snapshot: %v", err)
+	}
 	if ss == nil {
 		t.Fatalf("snapshot is nil")
 	}
@@ -111,7 +120,10 @@ func TestRestoreMissingSegments(t *testing.T) {
 		t.Fatalf("failed to seal current segment: %v", err)
 	}
 
-	ss := db.Snapshot()
+	ss, err := db.Snapshot()
+	if err != nil {
+		t.Fatalf("failed to create snapshot: %v", err)
+	}
 	if ss == nil {
 		t.Fatalf("snapshot is nil")
 	}
@@ -147,7 +159,10 @@ func TestRestoreSegments(t *testing.T) {
 		t.Fatalf("failed to seal current segment: %v", err)
 	}
 
-	ss := db.Snapshot()
+	ss, err := db.Snapshot()
+	if err != nil {
+		t.Fatalf("failed to create snapshot: %v", err)
+	}
 	if ss == nil {
 		t.Fatalf("snapshot is nil")
 	}

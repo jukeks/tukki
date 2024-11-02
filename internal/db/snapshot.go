@@ -50,11 +50,53 @@ func (s *Snapshot) Marshal() ([]byte, error) {
 	return proto.Marshal(snapshot)
 }
 
-func (db *Database) Snapshot() *Snapshot {
+func (db *Database) Snapshot() (*Snapshot, error) {
+	db.mu.Lock()
 	wal := db.ongoing.Wal.Snapshot()
 	operations := db.operationJournal.Snapshot()
+	currentSegments := db.getSegmentsSortedUnlocked()
+	db.mu.Unlock()
 
-	return NewSnapshot(wal, operations)
+	journalEntry := segments.NewSnapshotJournalEntry(currentSegments)
+	if er := db.operationJournal.Write(journalEntry); er != nil {
+		return nil, fmt.Errorf("failed to write snapshot journal entry: %w", er)
+	}
+
+	db.mu.Lock()
+	db.lastSnapshotSegments = currentSegments
+	db.mu.Unlock()
+
+	newPinnedSegments := make([]segments.SegmentMetadata, 0)
+	okToRemove := make([]segments.SegmentMetadata, 0)
+	// check if we can remove any segments after new snapshot
+	for _, pinnedSegment := range db.pinnedSegments {
+		isPinned := false
+		for _, currentSegment := range currentSegments {
+			if currentSegment.SegmentFile == pinnedSegment.SegmentFile {
+				// segment is pinned, so we need to keep it still
+				isPinned = true
+				continue
+			}
+		}
+		if isPinned {
+			newPinnedSegments = append(newPinnedSegments, pinnedSegment)
+			continue
+		}
+
+		okToRemove = append(okToRemove, pinnedSegment)
+	}
+
+	for _, segment := range okToRemove {
+		files.RemoveFile(db.dbDir, segment.SegmentFile)
+		files.RemoveFile(db.dbDir, segment.IndexFile)
+		files.RemoveFile(db.dbDir, segment.MembersFile)
+	}
+
+	db.mu.Lock()
+	db.pinnedSegments = newPinnedSegments
+	db.mu.Unlock()
+
+	return NewSnapshot(wal, operations), nil
 }
 
 type RestoreResult struct {
