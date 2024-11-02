@@ -12,7 +12,8 @@ import (
 
 var logger = log.New(log.Writer(), "compactor: ", log.LstdFlags)
 
-const TargetSegmentSize = 160 * 1024 * 1024
+const T1TargetSegmentSize = 160 * 1024 * 1024
+const T2TargetSegmentSize = T1TargetSegmentSize * 10
 
 func (db *Database) compactor() {
 	for {
@@ -47,10 +48,12 @@ type CompactionSegment struct {
 	Size int64
 }
 
-func DecideMergedSegments(targetSize int64, segmentList []CompactionSegment) []segments.SegmentId {
+type CompactionCriteria func(size int64) bool
+
+func DecideMergedSegments(criteria CompactionCriteria, segmentList []CompactionSegment) []segments.SegmentId {
 	for len(segmentList) >= 4 {
 		size := segmentList[0].Size
-		if size > targetSize {
+		if !criteria(size) {
 			log.Printf("segment %d is already larger than target size: %s",
 				segmentList[0].Id, bytesToMegaBytes(size))
 			segmentList = segmentList[1:]
@@ -60,7 +63,7 @@ func DecideMergedSegments(targetSize int64, segmentList []CompactionSegment) []s
 
 		nextSmallSegments := []segments.SegmentId{segmentList[0].Id}
 		for _, sg := range segmentList[1:] {
-			if sg.Size > targetSize {
+			if !criteria(sg.Size) {
 				log.Printf("segment %d too large: %s", sg.Id, bytesToMegaBytes(sg.Size))
 				break
 			}
@@ -84,7 +87,25 @@ func DecideMergedSegments(targetSize int64, segmentList []CompactionSegment) []s
 	return nil
 }
 
-func (db *Database) findSegmentsToMerge(targetSize int64) ([]segments.SegmentId, error) {
+type CompactionOperation struct {
+	Criteria   CompactionCriteria
+	TargetSize int64
+}
+
+var compactionCriterias = []CompactionOperation{
+	{Criteria: t1Criteria, TargetSize: T1TargetSegmentSize},
+	{Criteria: t2Criteria, TargetSize: T2TargetSegmentSize},
+}
+
+func t1Criteria(size int64) bool {
+	return size < T1TargetSegmentSize
+}
+
+func t2Criteria(size int64) bool {
+	return size >= T1TargetSegmentSize && size < T2TargetSegmentSize
+}
+
+func (db *Database) findSegmentsToMerge(criteria CompactionCriteria) ([]segments.SegmentId, error) {
 	sgs := db.getSegmentsReverseSorted()
 	compactionInfo := make([]CompactionSegment, 0, len(sgs))
 	for _, sg := range sgs {
@@ -98,23 +119,25 @@ func (db *Database) findSegmentsToMerge(targetSize int64) ([]segments.SegmentId,
 			Size: size,
 		})
 	}
-	return DecideMergedSegments(targetSize, compactionInfo), nil
+
+	return DecideMergedSegments(criteria, compactionInfo), nil
 }
 
 func (db *Database) Compact() {
-	segmentIds, err := db.findSegmentsToMerge(TargetSegmentSize)
-	if err != nil {
-		logger.Printf("error finding segments to merge: %v", err)
-		return
-	}
-	if len(segmentIds) == 0 {
-		logger.Printf("no segments to merge")
-		return
-	}
+	for _, criteria := range compactionCriterias {
+		segmentIds, err := db.findSegmentsToMerge(criteria.Criteria)
+		if err != nil {
+			logger.Printf("error finding segments to merge: %v", err)
+			continue
+		}
+		if len(segmentIds) == 0 {
+			logger.Printf("no segments to merge")
+			continue
+		}
 
-	logger.Printf("merging segments: %v", segmentIds)
-	err = db.CompactSegments(TargetSegmentSize, segmentIds...)
-	if err != nil {
-		logger.Printf("error merging segments: %v", err)
+		err = db.CompactSegments(uint64(criteria.TargetSize), segmentIds...)
+		if err != nil {
+			logger.Printf("error merging segments: %v", err)
+		}
 	}
 }
