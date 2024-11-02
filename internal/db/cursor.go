@@ -1,7 +1,6 @@
 package db
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -17,31 +16,27 @@ import (
 type Cursor struct {
 	dbDir          string
 	allSegments    []segments.SegmentMetadata
-	openedSegments []subIterator
+	openedSegments []keyvalue.SubIterator
 	indexes        map[segments.SegmentId]*index.Index
 	opened         bool
 	memtable       memtable.Memtable
+	iterator       keyvalue.Iterator
 
 	start string
 	end   string
 }
 
-type subIterator interface {
-	Get() (keyvalue.IteratorEntry, error)
-	Progress()
-	Close()
-}
-
 type sstableSubIterator struct {
-	reader *sstable.SSTableReader
-	file   *os.File
+	reader      *sstable.SSTableReader
+	segmentFile *os.File
+	index       *index.Index
 
 	current keyvalue.IteratorEntry
 	err     error
 }
 
 func (s *sstableSubIterator) Close() {
-	s.file.Close()
+	s.segmentFile.Close()
 }
 
 func (s *sstableSubIterator) Get() (keyvalue.IteratorEntry, error) {
@@ -50,6 +45,32 @@ func (s *sstableSubIterator) Get() (keyvalue.IteratorEntry, error) {
 
 func (s *sstableSubIterator) Progress() {
 	s.current, s.err = s.reader.Next()
+}
+
+func (s *sstableSubIterator) Seek(key string) error {
+	index := s.index
+	found := false
+	offset := uint64(0)
+	for _, entry := range index.EntryList {
+		if entry.Key >= key {
+			offset = entry.Offset
+			found = true
+			break
+		}
+	}
+	if !found {
+		return io.EOF
+	}
+
+	_, err := s.segmentFile.Seek(int64(offset), 0)
+	if err != nil {
+		s.segmentFile.Close()
+		return fmt.Errorf("failed to seek in segment file: %w", err)
+	}
+
+	s.reader = sstable.NewSSTableReader(s.segmentFile)
+	s.current, s.err = s.reader.Next()
+	return nil
 }
 
 type memtableSubIterator struct {
@@ -70,6 +91,20 @@ func (m *memtableSubIterator) Progress() {
 	m.current, m.err = m.iterator.Next()
 }
 
+func (m *memtableSubIterator) Seek(key string) error {
+	m.iterator = m.memtable.Iterate()
+	for {
+		m.Progress()
+		if m.err != nil {
+			return m.err
+		}
+
+		if m.current.Key >= key {
+			return nil
+		}
+	}
+}
+
 func NewCursor(dbDir,
 	start, end string, mt memtable.Memtable,
 	sortedSegments []segments.SegmentMetadata,
@@ -78,18 +113,22 @@ func NewCursor(dbDir,
 		dbDir: dbDir, memtable: mt,
 		allSegments: sortedSegments, indexes: indexes, start: start, end: end}
 
-	if start != "" {
-		err := cursor.seek()
-		if err != nil {
-			return nil, fmt.Errorf("failed to seek: %w", err)
-		}
+	if err := cursor.open(); err != nil {
+		return nil, fmt.Errorf("failed to open iterator: %w", err)
 	}
+
+	iter, err := keyvalue.NewIterator(start, end, false, cursor.openedSegments...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create iterator: %w", err)
+	}
+
+	cursor.iterator = iter
 
 	return cursor, nil
 }
 
 func (c *Cursor) open() error {
-	c.openedSegments = make([]subIterator, 0)
+	c.openedSegments = make([]keyvalue.SubIterator, 0)
 	mtIterator := c.memtable.Iterate()
 	mtState := &memtableSubIterator{
 		memtable: c.memtable,
@@ -106,10 +145,11 @@ func (c *Cursor) open() error {
 		reader := sstable.NewSSTableReader(segmentFile)
 		next, err := reader.Next()
 		opened := &sstableSubIterator{
-			file:    segmentFile,
-			reader:  reader,
-			current: next,
-			err:     err,
+			segmentFile: segmentFile,
+			index:       c.indexes[segment.Id],
+			reader:      reader,
+			current:     next,
+			err:         err,
 		}
 		c.openedSegments = append(c.openedSegments, opened)
 	}
@@ -119,70 +159,12 @@ func (c *Cursor) open() error {
 }
 
 func (c *Cursor) Next() (Pair, error) {
-	if !c.opened {
-		if err := c.open(); err != nil {
-			return Pair{},
-				fmt.Errorf("failed to open iterator: %w", err)
-		}
+	next, err := c.iterator.Next()
+	if err != nil {
+		return Pair{}, err
 	}
 
-	for {
-		// find first error free segment that is not past the end
-		result := c.openedSegments[0]
-		canProceed := false
-		for _, segment := range c.openedSegments {
-			current, err := segment.Get()
-			if err == nil && (c.end == "" || current.Key <= c.end) {
-				result = segment
-				canProceed = true
-				break
-			}
-		}
-		if !canProceed {
-			return Pair{}, io.EOF
-		}
-
-		for _, segment := range c.openedSegments {
-			current, err := segment.Get()
-			if err != nil {
-				if err != io.EOF {
-					return Pair{},
-						fmt.Errorf("failed to read next entry: %w", err)
-				}
-				continue
-			}
-
-			if c.end != "" && current.Key > c.end {
-				continue
-			}
-
-			currentResult, _ := result.Get()
-			if current.Key < currentResult.Key {
-				result = segment
-			}
-		}
-
-		ret, _ := result.Get()
-
-		// there can be earlier entries in other segments
-		// we need to advance them to the next entry
-		// to avoid exposing old value
-		for _, segment := range c.openedSegments {
-			current, _ := segment.Get()
-			if current.Key == ret.Key {
-				segment.Progress()
-			}
-		}
-
-		if ret.Deleted {
-			continue
-		}
-
-		return Pair{
-			Key:   ret.Key,
-			Value: ret.Value,
-		}, nil
-	}
+	return Pair{Key: next.Key, Value: next.Value}, nil
 }
 
 func (c *Cursor) Close() {
@@ -190,81 +172,4 @@ func (c *Cursor) Close() {
 		opened.Close()
 	}
 	c.opened = false
-}
-
-var errIteratorAlreadyOpened = errors.New("iterator already opened")
-var errStartNotSet = errors.New("start key not set")
-
-func (c *Cursor) seek() error {
-	if c.opened {
-		// not handled yet
-		return errIteratorAlreadyOpened
-	}
-
-	if c.start == "" {
-		return errStartNotSet
-	}
-
-	c.openedSegments = make([]subIterator, 0)
-
-	mtIterator := c.memtable.Iterate()
-	mtState := &memtableSubIterator{
-		memtable: c.memtable,
-		iterator: mtIterator,
-	}
-	// seek in memtable
-	for {
-		mtState.Progress()
-		current, err := mtState.Get()
-		if err != nil {
-			break
-		}
-		if current.Key >= c.start {
-			break
-		}
-	}
-	c.openedSegments = append(c.openedSegments, mtState)
-
-	for _, segment := range c.allSegments {
-		index := c.indexes[segment.Id]
-		found := false
-		offset := uint64(0)
-		for _, entry := range index.EntryList {
-			if entry.Key >= c.start {
-				offset = entry.Offset
-				found = true
-				break
-			}
-		}
-		if !found {
-			continue
-		}
-
-		segmentFile, err := files.OpenFile(c.dbDir, segment.SegmentFile)
-		if err != nil {
-			return fmt.Errorf("failed to open segment file: %w", err)
-		}
-		_, err = segmentFile.Seek(int64(offset), 0)
-		if err != nil {
-			segmentFile.Close()
-			return fmt.Errorf("failed to seek in segment file: %w", err)
-		}
-
-		reader := sstable.NewSSTableReader(segmentFile)
-		next, err := reader.Next()
-		opened := &sstableSubIterator{
-			file:    segmentFile,
-			reader:  reader,
-			current: next,
-			err:     err,
-		}
-		c.openedSegments = append(c.openedSegments, opened)
-	}
-	c.opened = true
-
-	if len(c.openedSegments) == 0 {
-		return io.EOF
-	}
-
-	return nil
 }
