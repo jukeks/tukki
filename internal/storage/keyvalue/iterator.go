@@ -3,13 +3,14 @@ package keyvalue
 import (
 	"fmt"
 	"io"
+	"log"
 )
 
 type SubIterator interface {
 	Get() (IteratorEntry, error)
 	Seek(key string) error
 	Progress()
-	Close()
+	Close() error
 }
 
 type Iterator struct {
@@ -50,7 +51,9 @@ func NewIterator(min, max string, returnTombstones bool, iterators ...SubIterato
 
 func (i *Iterator) Close() {
 	for _, iter := range i.iterators {
-		iter.Close()
+		if err := iter.Close(); err != nil {
+			log.Printf("failed to close iterator: %v", err)
+		}
 	}
 }
 

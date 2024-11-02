@@ -35,8 +35,8 @@ type sstableSubIterator struct {
 	err     error
 }
 
-func (s *sstableSubIterator) Close() {
-	s.segmentFile.Close()
+func (s *sstableSubIterator) Close() error {
+	return s.segmentFile.Close()
 }
 
 func (s *sstableSubIterator) Get() (keyvalue.IteratorEntry, error) {
@@ -80,7 +80,8 @@ type memtableSubIterator struct {
 	err      error
 }
 
-func (m *memtableSubIterator) Close() {
+func (m *memtableSubIterator) Close() error {
+	return nil
 }
 
 func (m *memtableSubIterator) Get() (keyvalue.IteratorEntry, error) {
