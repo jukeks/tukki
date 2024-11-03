@@ -126,7 +126,6 @@ func (db *Database) Compact() error {
 			continue
 		}
 		if len(segmentIds) == 0 {
-			logger.Printf("no segments to merge")
 			continue
 		}
 

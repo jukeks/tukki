@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"sort"
 
 	"github.com/jukeks/tukki/internal/storage/files"
@@ -177,7 +176,6 @@ func (db *Database) handleWalSizeLimit() error {
 		return nil
 	}
 
-	log.Printf("wal size limit reached, sealing current segment")
 	err := db.ongoing.Close()
 	if err != nil {
 		return err

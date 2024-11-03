@@ -58,6 +58,10 @@ func (i *Iterator) Close() {
 }
 
 func (i *Iterator) Next() (IteratorEntry, error) {
+	if len(i.usableIterators) == 0 {
+		return IteratorEntry{}, io.EOF
+	}
+
 	for {
 		// find first error free segment that is not past the end
 		result := i.usableIterators[0]

@@ -76,7 +76,10 @@ func (f *fsm) Snapshot() (raft.FSMSnapshot, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	ss := f.db.Snapshot()
+	ss, err := f.db.Snapshot()
+	if err != nil {
+		return nil, err
+	}
 	return &snapshot{snapshot: ss}, nil
 }
 

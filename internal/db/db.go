@@ -27,6 +27,10 @@ type Database struct {
 
 	compactorStop chan bool
 	nextOpId      segments.OperationId
+
+	lastSnapshotSegments []segments.SegmentMetadata
+	// segments waiting for snapshot to truly free
+	freedButNotRemoved []segments.SegmentMetadata
 }
 
 type Config struct {
@@ -69,17 +73,20 @@ func OpenDatabaseWithConfig(dbDir string, config Config) (*Database, error) {
 	}
 
 	db := &Database{
-		dbDir:            dbDir,
-		operationJournal: operationJournal,
-		segments:         currentSegments.Segments,
-		members:          make(map[segments.SegmentId]*segmentmembers.SegmentMembers),
-		indexes:          make(map[segments.SegmentId]*index.Index),
-		operations:       currentSegments.Operations,
-		nextOpId:         currentSegments.NextId,
-		ongoing:          ongoing,
-		config:           config,
-		compactorStop:    make(chan bool),
+		dbDir:                dbDir,
+		operationJournal:     operationJournal,
+		segments:             currentSegments.Segments,
+		members:              make(map[segments.SegmentId]*segmentmembers.SegmentMembers),
+		indexes:              make(map[segments.SegmentId]*index.Index),
+		operations:           currentSegments.Operations,
+		nextOpId:             currentSegments.NextId,
+		ongoing:              ongoing,
+		config:               config,
+		compactorStop:        make(chan bool),
+		lastSnapshotSegments: currentSegments.LastSnapshotSegments,
 	}
+
+	// TODO delete pending freed segments
 
 	if !bootstrapped {
 		err = db.Initialize()
@@ -334,10 +341,12 @@ func (db *Database) CompactSegments(targetSize uint64, segmentIds ...segments.Se
 		return err
 	}
 
-	log.Printf("compacted segments: %v", segmentIds)
+	log.Printf("compacted segments: %d to %d", segmentIds[len(segmentIds)-1], segmentIds[0])
 	log.Printf("new segments: %v", op.NewSegments())
 
 	db.mu.Lock()
+	defer db.mu.Unlock()
+
 	delete(db.operations, op.Id())
 
 	for _, segment := range op.SegmentsToCompact() {
@@ -363,13 +372,32 @@ func (db *Database) CompactSegments(targetSize uint64, segmentIds ...segments.Se
 		db.segments[segment.Id] = segment
 		db.indexes[segment.Id] = idx
 	}
-	db.mu.Unlock()
 
+	pinned := []segments.SegmentMetadata{}
 	// delete freed segment files
-	for _, segment := range op.SegmentsToCompact() {
-		files.RemoveFile(db.dbDir, segment.SegmentFile)
-		files.RemoveFile(db.dbDir, segment.MembersFile)
-		files.RemoveFile(db.dbDir, segment.IndexFile)
+	for _, compactedSegment := range op.SegmentsToCompact() {
+		isPinned := false
+		for _, snapshotPin := range db.lastSnapshotSegments {
+			if snapshotPin.SegmentFile == compactedSegment.SegmentFile {
+				// segment is pinned by snapshot, don't delete yet
+				pinned = append(pinned, compactedSegment)
+				isPinned = true
+				break
+			}
+		}
+		if isPinned {
+			log.Printf("compaction: segment %s is pinned, not removing", compactedSegment.SegmentFile)
+			continue
+		}
+
+		files.RemoveFile(db.dbDir, compactedSegment.SegmentFile)
+		files.RemoveFile(db.dbDir, compactedSegment.MembersFile)
+		files.RemoveFile(db.dbDir, compactedSegment.IndexFile)
+	}
+
+	if len(pinned) > 0 {
+		log.Printf("pinned segments: %v", pinned)
+		db.freedButNotRemoved = append(db.freedButNotRemoved, pinned...)
 	}
 
 	return nil

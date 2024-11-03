@@ -47,10 +47,15 @@ message SegmentOperationCompleted {
     repeated Segment freed = 3;
 }
 
+message Snapshot {
+    repeated Segment segments = 1;
+}
+
 message SegmentOperationJournalEntry {
     oneof entry {
         SegmentOperation started = 1;
         uint64 completed = 2 [deprecated = true];
         SegmentOperationCompleted completed_v2 = 3;
+        Snapshot snapshot = 4;
     }
 }

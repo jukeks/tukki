@@ -2,6 +2,7 @@ package segments
 
 import (
 	"io"
+	"sync"
 
 	"github.com/jukeks/tukki/internal/storage/files"
 	"github.com/jukeks/tukki/internal/storage/journal"
@@ -11,6 +12,7 @@ import (
 const SegmentJournalFilename = "segment_operations.journal"
 
 type SegmentOperationJournal struct {
+	mu      sync.Mutex
 	journal *journal.Journal
 }
 
@@ -32,14 +34,15 @@ func OpenSegmentOperationJournal(dbDir string) (
 		return nil, nil, err
 	}
 
-	return &SegmentOperationJournal{j}, currentSegments, nil
+	return &SegmentOperationJournal{journal: j}, currentSegments, nil
 }
 
 type CurrentSegments struct {
-	Ongoing    *OpenSegment
-	Segments   map[SegmentId]SegmentMetadata
-	Operations map[OperationId]SegmentOperation
-	NextId     OperationId
+	Ongoing              *OpenSegment
+	Segments             map[SegmentId]SegmentMetadata
+	Operations           map[OperationId]SegmentOperation
+	NextId               OperationId
+	LastSnapshotSegments []SegmentMetadata
 }
 
 func readOperationJournal(r *journal.JournalReader) (
@@ -50,6 +53,7 @@ func readOperationJournal(r *journal.JournalReader) (
 	segments := make(map[SegmentId]SegmentMetadata)
 	var ongoing *OpenSegment
 	biggestId := OperationId(0)
+	var lastSnapshotSegments []SegmentMetadata
 
 	for {
 		journalEntry := &segmentsv1.SegmentOperationJournalEntry{}
@@ -109,14 +113,21 @@ func readOperationJournal(r *journal.JournalReader) (
 				}
 			}
 			delete(operations, OperationId(completedV2.Id))
+		case *segmentsv1.SegmentOperationJournalEntry_Snapshot:
+			snapshot := journalEntry.GetSnapshot()
+			lastSnapshotSegments = make([]SegmentMetadata, len(snapshot.Segments))
+			for i, segmentPb := range snapshot.Segments {
+				lastSnapshotSegments[i] = *pbToSegmentMetadata(segmentPb)
+			}
 		}
 	}
 
 	return &CurrentSegments{
-		Ongoing:    ongoing,
-		Segments:   segments,
-		Operations: operations,
-		NextId:     biggestId + 1,
+		Ongoing:              ongoing,
+		Segments:             segments,
+		Operations:           operations,
+		NextId:               biggestId + 1,
+		LastSnapshotSegments: lastSnapshotSegments,
 	}, nil
 }
 
@@ -187,13 +198,19 @@ func segmentOperationFromProto(proto *segmentsv1.SegmentOperation) SegmentOperat
 }
 
 func (soj *SegmentOperationJournal) Write(entry *segmentsv1.SegmentOperationJournalEntry) error {
+	soj.mu.Lock()
+	defer soj.mu.Unlock()
 	return soj.journal.Writer.Write(entry)
 }
 
 func (soj *SegmentOperationJournal) Close() error {
+	soj.mu.Lock()
+	defer soj.mu.Unlock()
 	return soj.journal.Close()
 }
 
 func (soj *SegmentOperationJournal) Snapshot() []byte {
+	soj.mu.Lock()
+	defer soj.mu.Unlock()
 	return soj.journal.Writer.Snapshot()
 }

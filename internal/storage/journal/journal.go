@@ -71,7 +71,6 @@ func OpenJournal(dbDir string, journalName files.Filename, writemode WriteMode,
 			return nil, fmt.Errorf("failed to open journal file %s: %w", journalPath, err)
 		}
 	} else {
-		log.Printf("journal file does not exist, creating %s", journalPath)
 		journalFile, err = os.Create(journalPath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create journal file: %w", err)
