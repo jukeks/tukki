@@ -202,3 +202,46 @@ func TestRestoreSegments(t *testing.T) {
 		t.Fatalf("failed to get key1: %v", err)
 	}
 }
+
+func TestSnapshotReleasesPinnedSegments(t *testing.T) {
+	dbDir := t.TempDir()
+	db, err := OpenDatabase(dbDir)
+	if err != nil {
+		t.Fatalf("failed to open segment manager: %v", err)
+	}
+	defer db.Close()
+
+	writePairsAndSeal(t, db, Pair{"key1", "value1"}, Pair{"key2", "value2"})
+	writePairsAndSeal(t, db, Pair{"key3", "value3"}, Pair{"key4", "value4"})
+	writePairsAndSeal(t, db, Pair{"key5", "value5"}, Pair{"key6", "value6"})
+	writePairsAndSeal(t, db, Pair{"key7", "value7"}, Pair{"key8", "value8"})
+
+	_, err = db.Snapshot()
+	if err != nil {
+		t.Fatalf("failed to create snapshot: %v", err)
+	}
+
+	if len(db.lastSnapshotSegments) != 4 {
+		t.Fatalf("expected 3 last snapshot segments, got %d", len(db.lastSnapshotSegments))
+	}
+
+	if err := db.Compact(); err != nil {
+		t.Fatalf("failed to compact: %v", err)
+	}
+
+	if len(db.freedButNotRemoved) != 4 {
+		t.Fatalf("expected 3 freed but not removed segments, got %d", len(db.freedButNotRemoved))
+	}
+
+	_, err = db.Snapshot()
+	if err != nil {
+		t.Fatalf("failed to create snapshot: %v", err)
+	}
+
+	if len(db.lastSnapshotSegments) != 1 {
+		t.Fatalf("expected 1 last snapshot segments, got %d", len(db.lastSnapshotSegments))
+	}
+	if len(db.freedButNotRemoved) != 0 {
+		t.Fatalf("expected 0 freed but not removed segments, got %d", len(db.freedButNotRemoved))
+	}
+}

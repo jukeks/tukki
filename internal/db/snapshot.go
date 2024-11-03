@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 
 	"github.com/jukeks/tukki/internal/storage/files"
 	"github.com/jukeks/tukki/internal/storage/index"
@@ -52,24 +53,23 @@ func (s *Snapshot) Marshal() ([]byte, error) {
 
 func (db *Database) Snapshot() (*Snapshot, error) {
 	db.mu.Lock()
-	wal := db.ongoing.Wal.Snapshot()
-	operations := db.operationJournal.Snapshot()
-	currentSegments := db.getSegmentsSortedUnlocked()
-	db.mu.Unlock()
+	defer db.mu.Unlock()
 
+	currentSegments := db.getSegmentsSortedUnlocked()
 	journalEntry := segments.NewSnapshotJournalEntry(currentSegments)
-	if er := db.operationJournal.Write(journalEntry); er != nil {
-		return nil, fmt.Errorf("failed to write snapshot journal entry: %w", er)
+	if err := db.operationJournal.Write(journalEntry); err != nil {
+		return nil, fmt.Errorf("failed to write snapshot journal entry: %w", err)
 	}
 
-	db.mu.Lock()
+	wal := db.ongoing.Wal.Snapshot()
+	operations := db.operationJournal.Snapshot()
+
 	db.lastSnapshotSegments = currentSegments
-	db.mu.Unlock()
 
 	newPinnedSegments := make([]segments.SegmentMetadata, 0)
 	okToRemove := make([]segments.SegmentMetadata, 0)
 	// check if we can remove any segments after new snapshot
-	for _, pinnedSegment := range db.pinnedSegments {
+	for _, pinnedSegment := range db.freedButNotRemoved {
 		isPinned := false
 		for _, currentSegment := range currentSegments {
 			if currentSegment.SegmentFile == pinnedSegment.SegmentFile {
@@ -83,6 +83,7 @@ func (db *Database) Snapshot() (*Snapshot, error) {
 			continue
 		}
 
+		log.Printf("snapshot: segment %s is not pinned anymore, removing", pinnedSegment.SegmentFile)
 		okToRemove = append(okToRemove, pinnedSegment)
 	}
 
@@ -92,9 +93,7 @@ func (db *Database) Snapshot() (*Snapshot, error) {
 		files.RemoveFile(db.dbDir, segment.MembersFile)
 	}
 
-	db.mu.Lock()
-	db.pinnedSegments = newPinnedSegments
-	db.mu.Unlock()
+	db.freedButNotRemoved = newPinnedSegments
 
 	return NewSnapshot(wal, operations), nil
 }

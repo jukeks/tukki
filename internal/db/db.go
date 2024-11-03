@@ -29,8 +29,8 @@ type Database struct {
 	nextOpId      segments.OperationId
 
 	lastSnapshotSegments []segments.SegmentMetadata
-	// segments waiting for snapshot to progress
-	pinnedSegments []segments.SegmentMetadata
+	// segments waiting for snapshot to truly free
+	freedButNotRemoved []segments.SegmentMetadata
 }
 
 type Config struct {
@@ -85,6 +85,8 @@ func OpenDatabaseWithConfig(dbDir string, config Config) (*Database, error) {
 		compactorStop:        make(chan bool),
 		lastSnapshotSegments: currentSegments.LastSnapshotSegments,
 	}
+
+	// TODO delete pending freed segments
 
 	if !bootstrapped {
 		err = db.Initialize()
@@ -339,7 +341,7 @@ func (db *Database) CompactSegments(targetSize uint64, segmentIds ...segments.Se
 		return err
 	}
 
-	log.Printf("compacted segments: %v", segmentIds)
+	log.Printf("compacted segments: %d to %d", segmentIds[len(segmentIds)-1], segmentIds[0])
 	log.Printf("new segments: %v", op.NewSegments())
 
 	db.mu.Lock()
@@ -371,13 +373,11 @@ func (db *Database) CompactSegments(targetSize uint64, segmentIds ...segments.Se
 		db.indexes[segment.Id] = idx
 	}
 
-	lastSnapshot := db.lastSnapshotSegments
-
 	pinned := []segments.SegmentMetadata{}
 	// delete freed segment files
 	for _, compactedSegment := range op.SegmentsToCompact() {
 		isPinned := false
-		for _, snapshotPin := range lastSnapshot {
+		for _, snapshotPin := range db.lastSnapshotSegments {
 			if snapshotPin.SegmentFile == compactedSegment.SegmentFile {
 				// segment is pinned by snapshot, don't delete yet
 				pinned = append(pinned, compactedSegment)
@@ -386,6 +386,7 @@ func (db *Database) CompactSegments(targetSize uint64, segmentIds ...segments.Se
 			}
 		}
 		if isPinned {
+			log.Printf("compaction: segment %s is pinned, not removing", compactedSegment.SegmentFile)
 			continue
 		}
 
@@ -396,7 +397,7 @@ func (db *Database) CompactSegments(targetSize uint64, segmentIds ...segments.Se
 
 	if len(pinned) > 0 {
 		log.Printf("pinned segments: %v", pinned)
-		db.pinnedSegments = append(db.pinnedSegments, pinned...)
+		db.freedButNotRemoved = append(db.freedButNotRemoved, pinned...)
 	}
 
 	return nil
