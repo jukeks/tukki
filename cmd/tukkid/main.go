@@ -72,6 +72,8 @@ func main() {
 	config := db.GetDefaultConfig()
 	// In memory journal is good as raft will replay logs on startup
 	config.JournalMode = journal.WriteModeInMemory
+	// Raft replays logs on startup, db needs to be aware
+	config.ReplicaMode = true
 
 	db, err := db.OpenDatabaseWithConfig(*dbDir, config)
 	if err != nil {

@@ -36,12 +36,14 @@ type Database struct {
 type Config struct {
 	WalSizeLimit uint64
 	JournalMode  journal.WriteMode
+	ReplicaMode  bool
 }
 
 func GetDefaultConfig() Config {
 	return Config{
 		WalSizeLimit: 2 * 1024 * 1024,
 		JournalMode:  journal.WriteModeAsync,
+		ReplicaMode:  false,
 	}
 }
 
@@ -63,6 +65,9 @@ func OpenDatabaseWithConfig(dbDir string, config Config) (*Database, error) {
 			Operations: make(map[segments.OperationId]segments.SegmentOperation),
 		}
 	}
+
+	replicaWithoutSnapshot := (config.ReplicaMode &&
+		len(currentSegments.LastSnapshotSegments) == 0)
 
 	var ongoing *LiveSegment
 	if currentSegments.Ongoing != nil {
@@ -88,7 +93,12 @@ func OpenDatabaseWithConfig(dbDir string, config Config) (*Database, error) {
 
 	// TODO delete pending freed segments
 
-	if !bootstrapped {
+	if !bootstrapped || replicaWithoutSnapshot {
+		if replicaWithoutSnapshot {
+			log.Printf("replica mode without snapshot, re-initializing")
+			// TODO remove old files
+		}
+
 		err = db.Initialize()
 		if err != nil {
 			log.Printf("failed to initialize segment manager: %v", err)
@@ -209,7 +219,6 @@ func (db *Database) SealCurrentSegment() (*LiveSegment, error) {
 
 	db.mu.Lock()
 	db.segments[ongoingSegment.Segment.Id] = ongoingSegment.Segment
-	db.mu.Unlock()
 
 	db.ongoing = nextSegment
 	err = db.ongoing.Open(db.dbDir, db.config.JournalMode)
@@ -240,6 +249,9 @@ func (db *Database) SealCurrentSegment() (*LiveSegment, error) {
 		return nil, err
 	}
 	delete(db.operations, op.Id())
+	db.mu.Unlock()
+
+	log.Printf("sealed segment %d", ongoingSegment.Segment.Id)
 
 	return db.ongoing, nil
 }
