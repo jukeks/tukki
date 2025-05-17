@@ -1,0 +1,13 @@
+node-id: "2"
+db-dir: "./node-2"
+public-port: 50020
+cluster:
+  port: 50021
+  peers: 
+    - id: "1"
+      raft-addr: "localhost:50011"
+      sstable-addr: "localhost:50010"
+    - id: "3"
+      raft-addr: "localhost:50031"
+      sstable-addr: "localhost:50030"
+  init: false

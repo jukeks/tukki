@@ -8,9 +8,9 @@ import (
 	"os"
 	"os/signal"
 	"runtime/pprof"
-	"strings"
 	"syscall"
 
+	"github.com/goccy/go-yaml"
 	"github.com/jukeks/tukki/internal/db"
 	"github.com/jukeks/tukki/internal/grpc/kv"
 	"github.com/jukeks/tukki/internal/grpc/sstable"
@@ -26,34 +26,72 @@ func defaultDatabaseDir() string {
 }
 
 var (
-	port     = flag.Int("port", 50051, "The server port")
-	raftPort = flag.Int("raft-port", 50000, "The Raft server port")
-	nodeId   = flag.String("node-id", "node1", "The node ID")
-	dbDir    = flag.String("db-dir", defaultDatabaseDir(),
-		"The directory to store the database")
-	raftPeerList = flag.String("raft-peers", "",
-		"The Raft peers. Only relevant when initializing")
-	sstablePeerList = flag.String("sstable-peers", "",
-		"The SSTable peers. Used to sync missing segments. Should have the server port.")
-	inititialize = flag.Bool("init", false, "Initialize the database")
-	cpuprofile   = flag.String("cpuprofile", "", "write cpu profile to file")
+	config     = flag.String("config", "", "config file path")
+	cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
 )
 
-func parsePeers(peers string) ([]replica.Peer, error) {
-	peerList := strings.Split(peers, ",")
-	result := make([]replica.Peer, 0, len(peerList))
-	for _, peer := range peerList {
-		components := strings.Split(peer, "@")
-		if len(components) != 2 {
-			return nil, fmt.Errorf("invalid peer: %s", peer)
-		}
-		result = append(result, replica.Peer{Id: components[0], Addr: components[1]})
+type Config struct {
+	NodeID     string `yaml:"node-id"`
+	DBDir      string `yaml:"db-dir"`
+	PublicPort int    `yaml:"public-port"`
+	Cluster    struct {
+		Port  int    `yaml:"port"`
+		Init  bool   `yaml:"init"`
+		Peers []Peer `yaml:"peers"`
+	} `yaml:"cluster"`
+}
+
+type Peer struct {
+	ID          string `yaml:"id"`
+	RaftAddr    string `yaml:"raft-addr"`
+	SSTableAddr string `yaml:"sstable-addr"`
+}
+
+func loadConfig(path string) (*Config, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
 	}
-	return result, nil
+
+	var cfg Config
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return nil, err
+	}
+
+	return &cfg, nil
+}
+
+func getRaftPeers(peers []Peer) []replica.Peer {
+	sstablePeers := make([]replica.Peer, len(peers))
+	for i, peer := range peers {
+		sstablePeers[i] = replica.Peer{
+			Id:   peer.ID,
+			Addr: peer.RaftAddr,
+		}
+	}
+
+	return sstablePeers
+}
+
+func getSSTablePeers(peers []Peer) []replica.Peer {
+	sstablePeers := make([]replica.Peer, len(peers))
+	for i, peer := range peers {
+		sstablePeers[i] = replica.Peer{
+			Id:   peer.ID,
+			Addr: peer.SSTableAddr,
+		}
+	}
+
+	return sstablePeers
 }
 
 func main() {
 	flag.Parse()
+	cfg, err := loadConfig(*config)
+	if err != nil {
+		log.Fatalf("failed to load config: %v", err)
+	}
+
 	if *cpuprofile != "" {
 		f, err := os.Create(*cpuprofile)
 		if err != nil {
@@ -64,7 +102,7 @@ func main() {
 
 	defer pprof.StopCPUProfile()
 
-	err := os.MkdirAll(*dbDir, 0755)
+	err = os.MkdirAll(cfg.DBDir, 0755)
 	if err != nil {
 		log.Fatalf("failed to create db dir: %v", err)
 	}
@@ -75,31 +113,21 @@ func main() {
 	// Raft replays logs on startup, db needs to be aware
 	config.ReplicaMode = true
 
-	db, err := db.OpenDatabaseWithConfig(*dbDir, config)
+	db, err := db.OpenDatabaseWithConfig(cfg.DBDir, config)
 	if err != nil {
 		log.Fatalf("failed to open database: %v", err)
 	}
 
-	ls, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", *port))
+	ls, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", cfg.PublicPort))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
-	sstablePeers, err := parsePeers(*sstablePeerList)
-	if err != nil {
-		log.Fatalf("failed to sstable parse peers: %v", err)
-	}
+	sstablePeers := getSSTablePeers(cfg.Cluster.Peers)
+	raftPeers := getRaftPeers(cfg.Cluster.Peers)
 
-	var raftPeers []replica.Peer
-	if *raftPeerList != "" {
-		raftPeers, err = parsePeers(*raftPeerList)
-		if err != nil {
-			log.Fatalf("failed to raft parse peers: %v", err)
-		}
-	}
-
-	n := replica.New(false, sstablePeers, db, *dbDir, *dbDir+"/raft", fmt.Sprintf("localhost:%d", *raftPort))
-	if err := n.Open(*nodeId, *inititialize, raftPeers); err != nil {
+	n := replica.New(false, sstablePeers, db, cfg.DBDir, cfg.DBDir+"/raft", fmt.Sprintf("localhost:%d", cfg.Cluster.Port))
+	if err := n.Open(cfg.NodeID, cfg.Cluster.Init, raftPeers); err != nil {
 		log.Fatalf("failed to open node: %v", err)
 	}
 
