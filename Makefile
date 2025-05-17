@@ -1,5 +1,5 @@
 .PHONY: proto test test-cover build
-default: proto format build test
+default: proto format build test staticcheck
 
 proto:
 	cd proto && \
@@ -19,6 +19,12 @@ build:
 
 format:
 	go fmt ./...
+
+install_staticcheck:
+	go install honnef.co/go/tools/cmd/staticcheck@latest
+
+staticcheck:
+	staticcheck ./...
 
 test-cover:
 	go test -coverprofile=coverage.out ./... -coverpkg=./...
