@@ -16,6 +16,7 @@ require (
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/bits-and-blooms/bitset v1.10.0 // indirect
 	github.com/fatih/color v1.13.0 // indirect
+	github.com/goccy/go-yaml v1.17.1 // indirect
 	github.com/hashicorp/go-hclog v1.6.2 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.0 // indirect
 	github.com/hashicorp/go-msgpack/v2 v2.1.2 // indirect
