@@ -73,27 +73,6 @@ func readOperationJournal(r *journal.JournalReader) (
 			if operation.Id() > biggestId {
 				biggestId = operation.Id()
 			}
-		case *segmentsv1.SegmentOperationJournalEntry_Completed:
-			completedId := OperationId(journalEntry.GetCompleted())
-			completedV2 := journalEntry.GetCompletedV2()
-			if completedV2 != nil {
-				completedId = OperationId(completedV2.Id)
-			}
-
-			operation := operations[completedId]
-
-			switch op := operation.(type) {
-			case *AddSegmentOperation:
-				if op.completingSegment != nil {
-					segments[op.completingSegment.Segment.Id] = op.completingSegment.Segment
-				}
-				ongoing = op.newSegment
-			case *MergeSegmentsOperation:
-				delete(segments, op.segmentsToMerge[0].Id)
-				delete(segments, op.segmentsToMerge[1].Id)
-				segments[op.mergedSegment.Id] = op.mergedSegment
-			}
-			delete(operations, completedId)
 		case *segmentsv1.SegmentOperationJournalEntry_CompletedV2:
 			completedV2 := journalEntry.GetCompletedV2()
 			operation := operations[OperationId(completedV2.Id)]

@@ -102,7 +102,6 @@ func (j *AsynchronousJournalWriter) writer() {
 			}
 			return
 		case <-time.After(100 * time.Millisecond):
-			break
 		}
 	}
 }
