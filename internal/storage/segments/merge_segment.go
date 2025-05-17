@@ -57,9 +57,19 @@ func (o *MergeSegmentsOperation) StartJournalEntry() *segmentsv1.SegmentOperatio
 }
 
 func (o *MergeSegmentsOperation) CompletedJournalEntry() *segmentsv1.SegmentOperationJournalEntry {
+	added := []*segmentsv1.Segment{segmentMetadataToPb(&o.mergedSegment)}
+	freed := make([]*segmentsv1.Segment, len(o.segmentsToMerge))
+	for i, segment := range o.segmentsToMerge {
+		freed[i] = segmentMetadataToPb(&segment)
+	}
+
 	entry := &segmentsv1.SegmentOperationJournalEntry{
-		Entry: &segmentsv1.SegmentOperationJournalEntry_Completed{
-			Completed: uint64(o.id),
+		Entry: &segmentsv1.SegmentOperationJournalEntry_CompletedV2{
+			CompletedV2: &segmentsv1.SegmentOperationCompleted{
+				Id:    uint64(o.id),
+				Added: added,
+				Freed: freed,
+			},
 		},
 	}
 

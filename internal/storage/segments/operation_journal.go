@@ -82,6 +82,14 @@ func readOperationJournal(r *journal.JournalReader) (
 					segments[op.completingSegment.Segment.Id] = op.completingSegment.Segment
 				}
 				ongoing = op.newSegment
+			case *MergeSegmentsOperation:
+				for _, segment := range completedV2.Freed {
+					delete(segments, SegmentId(segment.Id))
+				}
+				for _, segment := range completedV2.Added {
+					mSegment := pbToSegmentMetadata(segment)
+					segments[mSegment.Id] = *mSegment
+				}
 			case *CompactSegmentsOperation:
 				for _, segment := range completedV2.Freed {
 					delete(segments, SegmentId(segment.Id))
