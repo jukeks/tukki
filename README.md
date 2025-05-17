@@ -78,8 +78,10 @@ use this interface to communicate.
 ```proto
 service KvService {
     rpc Query(QueryRequest) returns (QueryResponse) {}
+    rpc QueryRange(QueryRangeRequest) returns (stream QueryRangeResponse) {}
     rpc Set(SetRequest) returns (SetResponse) {}
     rpc Delete(DeleteRequest) returns (DeleteResponse) {}
+    rpc DeleteRange(DeleteRangeRequest) returns (DeleteRangeResponse) {}
 }
 ```
 
