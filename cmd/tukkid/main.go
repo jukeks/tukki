@@ -99,7 +99,6 @@ func main() {
 		}
 		pprof.StartCPUProfile(f)
 	}
-
 	defer pprof.StopCPUProfile()
 
 	err = os.MkdirAll(cfg.DBDir, 0755)
