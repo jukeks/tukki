@@ -21,10 +21,6 @@ import (
 	"google.golang.org/grpc"
 )
 
-func defaultDatabaseDir() string {
-	return "./tukki-db"
-}
-
 var (
 	config     = flag.String("config", "", "config file path")
 	cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
@@ -125,27 +121,23 @@ func main() {
 	sstablePeers := getSSTablePeers(cfg.Cluster.Peers)
 	raftPeers := getRaftPeers(cfg.Cluster.Peers)
 
-	n := replica.New(false, sstablePeers, db, cfg.DBDir, cfg.DBDir+"/raft", fmt.Sprintf("localhost:%d", cfg.Cluster.Port))
-	if err := n.Open(cfg.NodeID, cfg.Cluster.Init, raftPeers); err != nil {
+	node := replica.New(false, sstablePeers, db, cfg.DBDir, cfg.DBDir+"/raft", fmt.Sprintf("localhost:%d", cfg.Cluster.Port))
+	if err := node.Open(cfg.NodeID, cfg.Cluster.Init, raftPeers); err != nil {
 		log.Fatalf("failed to open node: %v", err)
 	}
 
-	kvServer := kv.NewKVServer(n)
+	kvServer := kv.NewKVServer(node)
 	sstableServer := sstable.NewSstableServer(db)
 
 	grpcServer := grpc.NewServer()
 	kvv1.RegisterKvServiceServer(grpcServer, kvServer)
 	sstablev1.RegisterSstableServiceServer(grpcServer, sstableServer)
 
-	sigchnl := make(chan os.Signal, 1)
-	signal.Notify(sigchnl, syscall.SIGINT, syscall.SIGTERM)
-
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
-		for {
-			<-sigchnl
-			grpcServer.GracefulStop()
-			break
-		}
+		<-sigChan
+		grpcServer.GracefulStop()
 	}()
 
 	if err := grpcServer.Serve(ls); err != nil {
