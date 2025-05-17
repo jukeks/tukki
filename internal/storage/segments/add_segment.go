@@ -73,11 +73,15 @@ func (o *AddSegmentOperation) StartJournalEntry() *segmentsv1.SegmentOperationJo
 }
 
 func (o *AddSegmentOperation) CompletedJournalEntry() *segmentsv1.SegmentOperationJournalEntry {
+	added := []*segmentsv1.Segment{}
+	if o.completingSegment != nil {
+		added = append(added, segmentMetadataToPb(&o.completingSegment.Segment))
+	}
 	entry := &segmentsv1.SegmentOperationJournalEntry{
 		Entry: &segmentsv1.SegmentOperationJournalEntry_CompletedV2{
 			CompletedV2: &segmentsv1.SegmentOperationCompleted{
 				Id:    uint64(o.id),
-				Added: []*segmentsv1.Segment{segmentMetadataToPb(&o.newSegment.Segment)},
+				Added: added,
 			},
 		},
 	}
