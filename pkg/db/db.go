@@ -4,6 +4,10 @@ import "github.com/jukeks/tukki/internal/db"
 
 type Database = db.Database
 type Config = db.Config
+type Pair = db.Pair
+type Cursor = db.Cursor
+
+var ErrKeyNotFound = db.ErrKeyNotFound
 
 func GetDefaultConfig() Config {
 	return db.GetDefaultConfig()
