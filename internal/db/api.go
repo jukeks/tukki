@@ -20,6 +20,9 @@ func (db *Database) Get(key string) (string, error) {
 	if err == nil {
 		return value, nil
 	}
+	if err == errTombstone {
+		return "", ErrKeyNotFound
+	}
 
 	return db.getFromSegments(key)
 }

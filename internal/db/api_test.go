@@ -80,6 +80,43 @@ func TestGetFromSegments(t *testing.T) {
 	}
 }
 
+func TestDeleteAndSeal(t *testing.T) {
+	db, err := OpenDatabase(t.TempDir())
+	if err != nil {
+		t.Fatalf("failed to open database: %v", err)
+	}
+	defer db.Close()
+
+	key := randstr.String(10)
+	value := randstr.String(10)
+	err = db.Set(key, value)
+	if err != nil {
+		t.Fatalf("failed to set key-value pair: %v", err)
+	}
+
+	readValue, err := db.Get(key)
+	if err != nil {
+		t.Fatalf("key not found in memtable")
+	}
+	if readValue != value {
+		t.Fatalf("Get returned wrong value: %s vs %s", readValue, value)
+	}
+
+	_, err = db.SealCurrentSegment()
+	if err != nil {
+		t.Fatalf("failed to seal segment: %v", err)
+	}
+
+	if err := db.Delete(key); err != nil {
+		t.Fatalf("failed to delete key: %v", err)
+	}
+
+	_, err = db.Get(key)
+	if err != ErrKeyNotFound {
+		t.Fatalf("key found db after delete")
+	}
+}
+
 func TestGetSSTableReader(t *testing.T) {
 	db, err := OpenDatabase(t.TempDir())
 	if err != nil {
