@@ -1,6 +1,8 @@
 package db
 
 import (
+	"errors"
+
 	"github.com/jukeks/tukki/internal/storage/files"
 	"github.com/jukeks/tukki/internal/storage/journal"
 	"github.com/jukeks/tukki/internal/storage/memtable"
@@ -54,11 +56,13 @@ func (d *LiveSegment) Set(key, value string) error {
 	return nil
 }
 
+var errTombstone = errors.New("tombstone")
+
 func (d *LiveSegment) Get(key string) (string, error) {
 	value, found := d.Memtable.Get(key)
 	if found {
 		if value.Deleted {
-			return "", ErrKeyNotFound
+			return "", errTombstone
 		}
 		return value.Value, nil
 	}
