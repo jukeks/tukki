@@ -28,7 +28,9 @@ func MergeSSTables(sstableWriter io.Writer, a, b keyvalue.KeyValueIterator,
 
 		// a is completely read
 		if errA == io.EOF {
-			writer.Write(entryB)
+			if _, err := writer.Write(entryB); err != nil {
+				return nil, err
+			}
 			members.Add(entryB.Key)
 			entryB, errB = b.Next()
 			continue
@@ -36,7 +38,9 @@ func MergeSSTables(sstableWriter io.Writer, a, b keyvalue.KeyValueIterator,
 
 		// b is completely read
 		if errB == io.EOF {
-			writer.Write(entryA)
+			if _, err := writer.Write(entryA); err != nil {
+				return nil, err
+			}
 			members.Add(entryA.Key)
 			entryA, errA = a.Next()
 			continue
@@ -44,13 +48,17 @@ func MergeSSTables(sstableWriter io.Writer, a, b keyvalue.KeyValueIterator,
 
 		// merge sorted entries by key
 		if entryA.Key < entryB.Key {
-			writer.Write(entryA)
+			if _, err := writer.Write(entryA); err != nil {
+				return nil, err
+			}
 			members.Add(entryA.Key)
 			entryA, errA = a.Next()
 			continue
 		}
 		if entryA.Key > entryB.Key {
-			writer.Write(entryB)
+			if _, err := writer.Write(entryB); err != nil {
+				return nil, err
+			}
 			members.Add(entryB.Key)
 			entryB, errB = b.Next()
 			continue
@@ -58,13 +66,19 @@ func MergeSSTables(sstableWriter io.Writer, a, b keyvalue.KeyValueIterator,
 
 		if entryA.Key == entryB.Key {
 			// b is newer segment
-			writer.Write(entryB)
+			if _, err := writer.Write(entryB); err != nil {
+				return nil, err
+			}
 			members.Add(entryB.Key)
 
 			entryA, errA = a.Next()
 			entryB, errB = b.Next()
 			continue
 		}
+	}
+
+	if err := writer.Flush(); err != nil {
+		return nil, err
 	}
 
 	return writer.WrittenOffsets(), nil
