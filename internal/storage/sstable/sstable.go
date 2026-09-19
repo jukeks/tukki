@@ -12,17 +12,18 @@ import (
 )
 
 type SSTableWriter struct {
-	writer    io.Writer
+	writer    *bufio.Writer
 	offsetMap index.OffsetMap
 }
 
 func NewSSTableWriter(writer io.Writer) *SSTableWriter {
 	return &SSTableWriter{
-		writer:    writer,
+		writer:    bufio.NewWriter(writer),
 		offsetMap: make(index.OffsetMap),
 	}
 }
 
+// Caller must w.Flush() after using this directly.
 func (w *SSTableWriter) Write(entry keyvalue.IteratorEntry) (uint32, error) {
 	record := sstablev1.SSTableRecord{
 		Key:     entry.Key,
@@ -32,9 +33,8 @@ func (w *SSTableWriter) Write(entry keyvalue.IteratorEntry) (uint32, error) {
 	return marshalling.WriteLengthPrefixedProtobufMessage(w.writer, &record)
 }
 
+// WriteFromIterator will Flush() for the caller.
 func (w *SSTableWriter) WriteFromIterator(iterator keyvalue.KeyValueIterator) error {
-	writer := bufio.NewWriter(w.writer)
-
 	var offset uint64 = 0
 	for entry, err := iterator.Next(); err == nil; entry, err = iterator.Next() {
 		len, err := w.Write(entry)
@@ -45,7 +45,7 @@ func (w *SSTableWriter) WriteFromIterator(iterator keyvalue.KeyValueIterator) er
 		offset += uint64(len)
 	}
 
-	err := writer.Flush()
+	err := w.writer.Flush()
 	if err != nil {
 		return fmt.Errorf("failed to flush: %w", err)
 	}
@@ -53,15 +53,14 @@ func (w *SSTableWriter) WriteFromIterator(iterator keyvalue.KeyValueIterator) er
 	return nil
 }
 
+// WriteFromIteratorUntil will Flush for the caller.
 func (w *SSTableWriter) WriteFromIteratorUntil(iterator keyvalue.KeyValueIterator, maxSize uint64) error {
-	writer := bufio.NewWriter(w.writer)
-
 	var offset uint64 = 0
 	for {
 		entry, err := iterator.Next()
 		if err != nil {
 			if err == io.EOF {
-				err := writer.Flush()
+				err := w.writer.Flush()
 				if err != nil {
 					return fmt.Errorf("failed to flush: %w", err)
 				}
@@ -82,7 +81,7 @@ func (w *SSTableWriter) WriteFromIteratorUntil(iterator keyvalue.KeyValueIterato
 		}
 	}
 
-	err := writer.Flush()
+	err := w.writer.Flush()
 	if err != nil {
 		return fmt.Errorf("failed to flush: %w", err)
 	}
@@ -92,6 +91,11 @@ func (w *SSTableWriter) WriteFromIteratorUntil(iterator keyvalue.KeyValueIterato
 
 func (w *SSTableWriter) WrittenOffsets() index.OffsetMap {
 	return w.offsetMap
+}
+
+// Flushes buffers to underlying Writer
+func (w *SSTableWriter) Flush() error {
+	return w.writer.Flush()
 }
 
 type SSTableReader struct {
