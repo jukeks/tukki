@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 
 	"github.com/hashicorp/raft"
 	"github.com/jukeks/tukki/internal/db"
@@ -134,7 +133,7 @@ func (f *fsm) handleMissingSegments(missingSegments []segments.SegmentMetadata) 
 		conn, err := grpc.Dial(peer.Addr,
 			grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
-			log.Fatalf("can not connect with server %v", err)
+			return fmt.Errorf("can not connect with server %w", err)
 		}
 		client := sstablev1.NewSstableServiceClient(conn)
 		for _, segment := range missingSegments {
@@ -143,7 +142,7 @@ func (f *fsm) handleMissingSegments(missingSegments []segments.SegmentMetadata) 
 			}
 			stream, err := client.GetSstable(context.Background(), req)
 			if err != nil {
-				log.Fatalf("can not get sstable from server %v", err)
+				return fmt.Errorf("can not get sstable from server %w", err)
 			}
 
 			iterator := &SstableIterator{
