@@ -1,6 +1,7 @@
 package kv
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"sort"
@@ -17,22 +18,22 @@ type Store struct {
 	store map[string]string
 }
 
-func (s *Store) Get(key string) (string, error) {
-	value, ok := s.store[key]
+func (s *Store) Get(key []byte) ([]byte, error) {
+	value, ok := s.store[string(key)]
 	if !ok {
-		return "", nil
+		return nil, nil
 	}
 
-	return value, nil
+	return []byte(value), nil
 }
 
-func (s *Store) Set(key, value string) error {
-	s.store[key] = value
+func (s *Store) Set(key, value []byte) error {
+	s.store[string(key)] = string(value)
 	return nil
 }
 
-func (s *Store) Delete(key string) error {
-	delete(s.store, key)
+func (s *Store) Delete(key []byte) error {
+	delete(s.store, string(key))
 	return nil
 }
 
@@ -51,22 +52,22 @@ func (i *iterator) Next() (db.Pair, error) {
 	return pair, nil
 }
 
-func (s *Store) GetRange(min, max string) (db.KeyValueIterator, error) {
+func (s *Store) GetRange(min, max []byte) (db.KeyValueIterator, error) {
 	resp := make([]db.Pair, 0, len(s.store))
 	for k, v := range s.store {
-		if k < min || k > max {
+		if k < string(min) || k > string(max) {
 			continue
 		}
-		resp = append(resp, db.Pair{Key: k, Value: v})
+		resp = append(resp, db.Pair{Key: []byte(k), Value: []byte(v)})
 	}
 	sort.Slice(resp, func(i, j int) bool {
-		return resp[i].Key < resp[j].Key
+		return string(resp[i].Key) < string(resp[j].Key)
 	})
 
 	return &iterator{data: resp}, nil
 }
 
-func (s *Store) DeleteRange(min, max string) (uint64, error) {
+func (s *Store) DeleteRange(min, max []byte) (uint64, error) {
 	toDelete, err := s.GetRange(min, max)
 	if err != nil {
 		return 0, err
@@ -74,7 +75,7 @@ func (s *Store) DeleteRange(min, max string) (uint64, error) {
 
 	deleted := 0
 	for pair, err := toDelete.Next(); err != io.EOF; pair, err = toDelete.Next() {
-		delete(s.store, pair.Key)
+		delete(s.store, string(pair.Key))
 		deleted++
 	}
 
@@ -100,8 +101,8 @@ func TestKvServer(t *testing.T) {
 
 	_, err = client.Set(ctx, &kvv1.SetRequest{
 		Pair: &kvv1.KvPair{
-			Key:   key,
-			Value: value,
+			Key:   []byte(key),
+			Value: []byte(value),
 		},
 	})
 
@@ -110,31 +111,31 @@ func TestKvServer(t *testing.T) {
 	}
 
 	resp, err := client.Query(ctx, &kvv1.QueryRequest{
-		Key: key,
+		Key: []byte(key),
 	})
 	if err != nil {
 		t.Fatalf("failed to query: %v", err)
 	}
 
-	if resp.GetPair().Value != value {
+	if !bytes.Equal(resp.GetPair().Value, []byte(value)) {
 		t.Fatalf("expected value %s, got %s", value, resp.GetPair().Value)
 	}
 
 	_, err = client.Delete(ctx, &kvv1.DeleteRequest{
-		Key: key,
+		Key: []byte(key),
 	})
 	if err != nil {
 		t.Fatalf("failed to delete key: %v", err)
 	}
 
 	resp, err = client.Query(ctx, &kvv1.QueryRequest{
-		Key: key,
+		Key: []byte(key),
 	})
 	if err != nil {
 		t.Fatalf("failed to query: %v", err)
 	}
 
-	if resp.GetPair().Value != "" {
+	if string(resp.GetPair().Value) != "" {
 		t.Fatalf("expected empty value, got %s", resp.GetPair().Value)
 	}
 }
@@ -171,9 +172,9 @@ func TestKvServerRanges(t *testing.T) {
 	ctx := context.Background()
 
 	pairs := []Pair{
-		{Key: "a", Value: "1"},
-		{Key: "b", Value: "2"},
-		{Key: "c", Value: "3"},
+		{Key: []byte("a"), Value: []byte("1")},
+		{Key: []byte("b"), Value: []byte("2")},
+		{Key: []byte("c"), Value: []byte("3")},
 	}
 
 	for _, pair := range pairs {
@@ -189,8 +190,8 @@ func TestKvServerRanges(t *testing.T) {
 	}
 
 	stream, err := client.QueryRange(ctx, &kvv1.QueryRangeRequest{
-		Min: "a",
-		Max: "c",
+		Min: []byte("a"),
+		Max: []byte("c"),
 	})
 	if err != nil {
 		t.Fatalf("failed to query range: %v", err)
@@ -206,25 +207,25 @@ func TestKvServerRanges(t *testing.T) {
 	}
 
 	for i, pair := range pairs {
-		if resp[i].Key != pair.Key {
+		if !bytes.Equal(resp[i].Key, pair.Key) {
 			t.Fatalf("expected key %s, got %s", pair.Key, resp[i].Key)
 		}
-		if resp[i].Value != pair.Value {
+		if !bytes.Equal(resp[i].Value, pair.Value) {
 			t.Fatalf("expected value %s, got %s", pair.Value, resp[i].Value)
 		}
 	}
 
 	_, err = client.DeleteRange(ctx, &kvv1.DeleteRangeRequest{
-		Min: "a",
-		Max: "b",
+		Min: []byte("a"),
+		Max: []byte("b"),
 	})
 	if err != nil {
 		t.Fatalf("failed to delete range: %v", err)
 	}
 
 	stream, err = client.QueryRange(ctx, &kvv1.QueryRangeRequest{
-		Min: "a",
-		Max: "c",
+		Min: []byte("a"),
+		Max: []byte("c"),
 	})
 	if err != nil {
 		t.Fatalf("failed to query range: %v", err)
@@ -239,7 +240,7 @@ func TestKvServerRanges(t *testing.T) {
 		t.Fatalf("expected 1 pair, got %d", len(resp))
 	}
 
-	if resp[0].Key != "c" {
+	if string(resp[0].Key) != "c" {
 		t.Fatalf("expected key c, got %s", resp[0].Key)
 	}
 }

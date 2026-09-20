@@ -1,6 +1,7 @@
 package sstable
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -49,7 +50,7 @@ func (s *sstableSubIterator) Progress() {
 
 var ErrIndexNotProvided = errors.New("index not provided")
 
-func (s *sstableSubIterator) Seek(key string) error {
+func (s *sstableSubIterator) Seek(key []byte) error {
 	found := false
 	offset := uint64(0)
 	if s.index == nil {
@@ -57,7 +58,7 @@ func (s *sstableSubIterator) Seek(key string) error {
 	}
 
 	for _, entry := range s.index.EntryList {
-		if entry.Key >= key {
+		if bytes.Compare(entry.Key, key) >= 0 {
 			offset = entry.Offset
 			found = true
 			break

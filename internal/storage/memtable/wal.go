@@ -1,6 +1,7 @@
 package memtable
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"log"
@@ -29,17 +30,17 @@ func OpenWal(dbDir string, journalName files.Filename, mode journal.WriteMode, m
 	return &Wal{j}, nil
 }
 
-func (mtj *Wal) Set(key, value string) error {
+func (mtj *Wal) Set(key, value []byte) error {
 	return mtj.journal.Writer.Write(&walv1.WalEntry{
-		Key:     key,
-		Value:   value,
+		Key:     bytes.Clone(key),
+		Value:   bytes.Clone(value),
 		Deleted: false,
 	})
 }
 
-func (mtj *Wal) Delete(key string) error {
+func (mtj *Wal) Delete(key []byte) error {
 	return mtj.journal.Writer.Write(&walv1.WalEntry{
-		Key:     key,
+		Key:     bytes.Clone(key),
 		Deleted: true,
 	})
 }

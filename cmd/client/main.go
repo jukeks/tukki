@@ -85,8 +85,8 @@ func repl(client kvv1.KvServiceClient) {
 			start := time.Now()
 			_, err := client.Set(context.Background(), &kvv1.SetRequest{
 				Pair: &kvv1.KvPair{
-					Key:   cmd.Key,
-					Value: cmd.Value,
+					Key:   []byte(cmd.Key),
+					Value: []byte(cmd.Value),
 				},
 			})
 			if err != nil {
@@ -97,7 +97,7 @@ func repl(client kvv1.KvServiceClient) {
 		case "get":
 			start := time.Now()
 			resp, err := client.Query(context.Background(), &kvv1.QueryRequest{
-				Key: cmd.Key,
+				Key: []byte(cmd.Key),
 			})
 			if err != nil {
 				fmt.Printf("failed to get: %v (%v)\n", err, time.Since(start))
@@ -111,8 +111,8 @@ func repl(client kvv1.KvServiceClient) {
 		case "range":
 			start := time.Now()
 			resp, err := client.QueryRange(context.Background(), &kvv1.QueryRangeRequest{
-				Min: cmd.Key,
-				Max: cmd.Value,
+				Min: []byte(cmd.Key),
+				Max: []byte(cmd.Value),
 			})
 			if err != nil {
 				fmt.Printf("failed to get range: %v (%v)\n", err, time.Since(start))
@@ -131,7 +131,7 @@ func repl(client kvv1.KvServiceClient) {
 			}
 		case "delete":
 			_, err := client.Delete(context.Background(), &kvv1.DeleteRequest{
-				Key: cmd.Key,
+				Key: []byte(cmd.Key),
 			})
 			if err != nil {
 				fmt.Printf("failed to delete: %v\n", err)
@@ -140,8 +140,8 @@ func repl(client kvv1.KvServiceClient) {
 		case "deleteRange":
 			start := time.Now()
 			resp, err := client.DeleteRange(context.Background(), &kvv1.DeleteRangeRequest{
-				Min: cmd.Key,
-				Max: cmd.Value,
+				Min: []byte(cmd.Key),
+				Max: []byte(cmd.Value),
 			})
 			if err != nil {
 				fmt.Printf("failed to delete range: %v (%v)\n", err, time.Since(start))

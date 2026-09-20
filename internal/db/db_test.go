@@ -1,6 +1,7 @@
 package db
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/thanhpk/randstr"
@@ -15,14 +16,14 @@ func TestDB(t *testing.T) {
 
 	key := randstr.String(10)
 	value := randstr.String(16 * 1024)
-	database.Set(key, value)
+	database.Set([]byte(key), []byte(value))
 
-	storedValue, err := database.Get(key)
+	storedValue, err := database.Get([]byte(key))
 	if err != nil {
 		t.Fatalf("failed to get value: %v", err)
 	}
 
-	if storedValue != value {
+	if !bytes.Equal(storedValue, []byte(value)) {
 		t.Fatalf("stored value does not match: %s != %s", storedValue, value)
 	}
 
@@ -33,12 +34,12 @@ func TestDB(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
-	storedValue, err = database.Get(key)
+	storedValue, err = database.Get([]byte(key))
 	if err != nil {
 		t.Fatalf("failed to get value: %v", err)
 	}
 
-	if storedValue != value {
+	if !bytes.Equal(storedValue, []byte(value)) {
 		t.Fatalf("stored value does not match: %s != %s", storedValue, value)
 	}
 
@@ -53,20 +54,20 @@ func TestDelete(t *testing.T) {
 
 	key := randstr.String(10)
 	value := randstr.String(16 * 1024)
-	database.Set(key, value)
+	database.Set([]byte(key), []byte(value))
 
-	storedValue, err := database.Get(key)
+	storedValue, err := database.Get([]byte(key))
 	if err != nil {
 		t.Fatalf("failed to get value: %v", err)
 	}
 
-	if storedValue != value {
+	if !bytes.Equal(storedValue, []byte(value)) {
 		t.Fatalf("stored value does not match: %s != %s", storedValue, value)
 	}
 
-	database.Delete(key)
+	database.Delete([]byte(key))
 
-	_, err = database.Get(key)
+	_, err = database.Get([]byte(key))
 	if err == nil {
 		t.Fatalf("key should not exist anymore")
 	}
@@ -141,7 +142,7 @@ func TestSegmentManager(t *testing.T) {
 }
 
 func writeLiveSegment(t *testing.T, liveSegment *LiveSegment, key, value string) {
-	err := liveSegment.Set(key, value)
+	err := liveSegment.Set([]byte(key), []byte(value))
 	if err != nil {
 		t.Fatalf("failed to set key-value pair: %v", err)
 	}
@@ -173,7 +174,7 @@ func TestMergeSegments(t *testing.T) {
 
 	writeLiveSegment(t, ongoing, "key3", "value3")
 	writeLiveSegment(t, ongoing, "key4", "value4")
-	err = ongoing.Delete("key2")
+	err = ongoing.Delete([]byte("key2"))
 	if err != nil {
 		t.Fatalf("failed to delete key: %v", err)
 	}
@@ -231,7 +232,7 @@ func TestSegmentRotated(t *testing.T) {
 	for written < int(db.config.WalSizeLimit)*3 {
 		key := randstr.String(10)
 		value := randstr.String(16 * 1024)
-		err = db.Set(key, value)
+		err = db.Set([]byte(key), []byte(value))
 		if err != nil {
 			t.Fatalf("failed to set key-value pair: %v", err)
 		}
@@ -244,11 +245,11 @@ func TestSegmentRotated(t *testing.T) {
 	}
 
 	for k, v := range kvMap {
-		value, err := db.Get(k)
+		value, err := db.Get([]byte(k))
 		if err != nil {
 			t.Fatalf("failed to get key-value pair: %v", err)
 		}
-		if value != v {
+		if !bytes.Equal(value, []byte(v)) {
 			t.Fatalf("expected value to be %s, got %s", v, value)
 		}
 	}
@@ -271,6 +272,6 @@ func BenchmarkWrite(b *testing.B) {
 		key := randstr.String(10)
 		value := randstr.String(16 * 1024)
 		b.StartTimer()
-		db.Set(key, value)
+		db.Set([]byte(key), []byte(value))
 	}
 }

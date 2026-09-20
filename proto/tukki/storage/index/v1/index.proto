@@ -5,6 +5,6 @@ package tukki.storage.index.v1;
 option go_package = "github.com/jukeks/tukki/db/index";
 
 message IndexEntry {
-    string key = 1;
+    bytes key = 1;
     uint64 offset = 2;
 }

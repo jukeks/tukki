@@ -1,6 +1,7 @@
 package sstable_test
 
 import (
+	"bytes"
 	"os"
 	"testing"
 
@@ -18,7 +19,7 @@ func createSSTable(dbDir string, length int) string {
 	for i := 0; i < length; i++ {
 		keys[i] = randstr.String(16)
 		values[i] = randstr.String(16)
-		mt.Insert(keys[i], values[i])
+		mt.Insert([]byte(keys[i]), []byte(values[i]))
 	}
 
 	f := testutil.CreateTempFile(dbDir, "sstable-test-*")
@@ -70,10 +71,10 @@ func checkMemtableAreEqual(mt1, mt2 memtable.Memtable, expectedLen int) bool {
 			return false
 		}
 
-		if entry1.Key != entry2.Key {
+		if !bytes.Equal(entry1.Key, entry2.Key) {
 			return false
 		}
-		if entry1.Value != entry2.Value {
+		if !bytes.Equal(entry1.Value, entry2.Value) {
 			return false
 		}
 	}
@@ -130,10 +131,10 @@ func testMerge(t *testing.T, table1Len, table2Len int) {
 	for entry, err := sstr.Next(); err == nil; entry, err = sstr.Next() {
 		found++
 
-		if prevKey != "" && prevKey > entry.Key {
+		if prevKey != "" && string(prevKey) > string(entry.Key) {
 			t.Fatalf("keys not sorted")
 		}
-		prevKey = entry.Key
+		prevKey = string(entry.Key)
 	}
 
 	if found != table1Len+table2Len {
@@ -155,10 +156,10 @@ func TestMerge(t *testing.T) {
 
 func TestMergeUpdates(t *testing.T) {
 	mt1 := memtable.NewMemtable()
-	mt1.Insert("a", "a")
+	mt1.Insert([]byte("a"), []byte("a"))
 
 	mt2 := memtable.NewMemtable()
-	mt2.Insert("a", "b")
+	mt2.Insert([]byte("a"), []byte("b"))
 
 	f1 := testutil.CreateTempFile("test-tukki", "sstable-test-*")
 	defer os.Remove(f1.Name())
@@ -196,7 +197,7 @@ func TestMergeUpdates(t *testing.T) {
 
 	m := make(map[string]string)
 	for entry, err := mergeReader.Next(); err == nil; entry, err = mergeReader.Next() {
-		m[entry.Key] = entry.Value
+		m[string(entry.Key)] = string(entry.Value)
 	}
 
 	if len(m) != 1 {

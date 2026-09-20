@@ -1,5 +1,7 @@
 package memtable
 
+import "bytes"
+
 import "github.com/jukeks/tukki/internal/storage/keyvalue"
 
 type memtableSubIterator struct {
@@ -31,7 +33,7 @@ func (m *memtableSubIterator) Progress() {
 	m.current, m.err = m.iterator.Next()
 }
 
-func (m *memtableSubIterator) Seek(key string) error {
+func (m *memtableSubIterator) Seek(key []byte) error {
 	m.iterator = m.memtable.Iterate()
 	for {
 		m.Progress()
@@ -39,7 +41,7 @@ func (m *memtableSubIterator) Seek(key string) error {
 			return m.err
 		}
 
-		if m.current.Key >= key {
+		if bytes.Compare(m.current.Key, key) >= 0 {
 			return nil
 		}
 	}

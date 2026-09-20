@@ -15,7 +15,7 @@ func TestSnapshots(t *testing.T) {
 	}
 	defer db.Close()
 
-	if err := db.Set("key1", "value1"); err != nil {
+	if err := db.Set([]byte("key1"), []byte("value1")); err != nil {
 		t.Fatalf("failed to set key1: %v", err)
 	}
 
@@ -35,7 +35,7 @@ func TestMarshalling(t *testing.T) {
 		t.Fatalf("failed to open segment manager: %v", err)
 	}
 
-	if err := db.Set("key1", "value1"); err != nil {
+	if err := db.Set([]byte("key1"), []byte("value1")); err != nil {
 		t.Fatalf("failed to set key1: %v", err)
 	}
 
@@ -69,7 +69,7 @@ func TestRestore(t *testing.T) {
 		t.Fatalf("failed to open segment manager: %v", err)
 	}
 
-	if err := db.Set("key1", "value1"); err != nil {
+	if err := db.Set([]byte("key1"), []byte("value1")); err != nil {
 		t.Fatalf("failed to set key1: %v", err)
 	}
 
@@ -81,7 +81,7 @@ func TestRestore(t *testing.T) {
 		t.Fatalf("snapshot is nil")
 	}
 
-	if err := db.Set("key2", "value2"); err != nil {
+	if err := db.Set([]byte("key2"), []byte("value2")); err != nil {
 		t.Fatalf("failed to set key2: %v", err)
 	}
 
@@ -96,11 +96,11 @@ func TestRestore(t *testing.T) {
 		t.Fatalf("failed to open segment manager: %v", err)
 	}
 
-	if _, err := db.Get("key1"); err != nil {
+	if _, err := db.Get([]byte("key1")); err != nil {
 		t.Fatalf("failed to get key1: %v", err)
 	}
 
-	if _, err := db.Get("key2"); err == nil {
+	if _, err := db.Get([]byte("key2")); err == nil {
 		t.Fatalf("key2 should not exist")
 	}
 }
@@ -112,7 +112,7 @@ func TestRestoreMissingSegments(t *testing.T) {
 		t.Fatalf("failed to open segment manager: %v", err)
 	}
 
-	if err := db.Set("key1", "value1"); err != nil {
+	if err := db.Set([]byte("key1"), []byte("value1")); err != nil {
 		t.Fatalf("failed to set key1: %v", err)
 	}
 
@@ -151,7 +151,7 @@ func TestRestoreSegments(t *testing.T) {
 		t.Fatalf("failed to open segment manager: %v", err)
 	}
 
-	if err := db.Set("key1", "value1"); err != nil {
+	if err := db.Set([]byte("key1"), []byte("value1")); err != nil {
 		t.Fatalf("failed to set key1: %v", err)
 	}
 
@@ -198,7 +198,7 @@ func TestRestoreSegments(t *testing.T) {
 		t.Fatalf("failed to open segment manager: %v", err)
 	}
 
-	if _, err := db2.Get("key1"); err != nil {
+	if _, err := db2.Get([]byte("key1")); err != nil {
 		t.Fatalf("failed to get key1: %v", err)
 	}
 }
@@ -211,10 +211,10 @@ func TestSnapshotReleasesPinnedSegments(t *testing.T) {
 	}
 	defer db.Close()
 
-	writePairsAndSeal(t, db, Pair{"key1", "value1"}, Pair{"key2", "value2"})
-	writePairsAndSeal(t, db, Pair{"key3", "value3"}, Pair{"key4", "value4"})
-	writePairsAndSeal(t, db, Pair{"key5", "value5"}, Pair{"key6", "value6"})
-	writePairsAndSeal(t, db, Pair{"key7", "value7"}, Pair{"key8", "value8"})
+	writePairsAndSeal(t, db, Pair{[]byte("key1"), []byte("value1")}, Pair{[]byte("key2"), []byte("value2")})
+	writePairsAndSeal(t, db, Pair{[]byte("key3"), []byte("value3")}, Pair{[]byte("key4"), []byte("value4")})
+	writePairsAndSeal(t, db, Pair{[]byte("key5"), []byte("value5")}, Pair{[]byte("key6"), []byte("value6")})
+	writePairsAndSeal(t, db, Pair{[]byte("key7"), []byte("value7")}, Pair{[]byte("key8"), []byte("value8")})
 
 	_, err = db.Snapshot()
 	if err != nil {

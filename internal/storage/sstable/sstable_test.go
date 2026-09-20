@@ -1,6 +1,7 @@
 package sstable_test
 
 import (
+	"bytes"
 	"os"
 	"testing"
 
@@ -19,7 +20,7 @@ func TestSSTable(t *testing.T) {
 	for i := 0; i < len; i++ {
 		keys[i] = randstr.String(16)
 		values[i] = randstr.String(16)
-		mt.Insert(keys[i], values[i])
+		mt.Insert([]byte(keys[i]), []byte(values[i]))
 	}
 
 	tmpDir := t.TempDir()
@@ -55,7 +56,7 @@ func TestSSTable(t *testing.T) {
 			t.Fatalf("key %s not found", key)
 		}
 
-		if value != expectedValue.Value {
+		if !bytes.Equal(value, expectedValue.Value) {
 			t.Fatalf("value for key %s does not match", key)
 		}
 	}

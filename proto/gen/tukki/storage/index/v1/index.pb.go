@@ -23,7 +23,7 @@ const (
 
 type IndexEntry struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Key           []byte                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	Offset        uint64                 `protobuf:"varint,2,opt,name=offset,proto3" json:"offset,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -59,11 +59,11 @@ func (*IndexEntry) Descriptor() ([]byte, []int) {
 	return file_tukki_storage_index_v1_index_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *IndexEntry) GetKey() string {
+func (x *IndexEntry) GetKey() []byte {
 	if x != nil {
 		return x.Key
 	}
-	return ""
+	return nil
 }
 
 func (x *IndexEntry) GetOffset() uint64 {
@@ -80,7 +80,7 @@ const file_tukki_storage_index_v1_index_proto_rawDesc = "" +
 	"\"tukki/storage/index/v1/index.proto\x12\x16tukki.storage.index.v1\"6\n" +
 	"\n" +
 	"IndexEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x16\n" +
+	"\x03key\x18\x01 \x01(\fR\x03key\x12\x16\n" +
 	"\x06offset\x18\x02 \x01(\x04R\x06offsetB\xe1\x01\n" +
 	"\x1acom.tukki.storage.index.v1B\n" +
 	"IndexProtoP\x01Z<github.com/jukeks/tukki/proto/tukki/storage/index/v1;indexv1\xa2\x02\x03TSI\xaa\x02\x16Tukki.Storage.Index.V1\xca\x02\x16Tukki\\Storage\\Index\\V1\xe2\x02\"Tukki\\Storage\\Index\\V1\\GPBMetadata\xea\x02\x19Tukki::Storage::Index::V1b\x06proto3"

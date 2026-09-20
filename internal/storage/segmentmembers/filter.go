@@ -53,12 +53,12 @@ func (sb *SegmentMembers) Save(dbDir string, filename files.Filename) error {
 	return f.Close()
 }
 
-func (sb *SegmentMembers) Add(key string) {
-	sb.filter.AddString(key)
+func (sb *SegmentMembers) Add(key []byte) {
+	sb.filter.Add(key)
 }
 
-func (sb *SegmentMembers) Contains(key string) bool {
-	return sb.filter.TestString(key)
+func (sb *SegmentMembers) Contains(key []byte) bool {
+	return sb.filter.Test(key)
 }
 
 func (sb *SegmentMembers) Fill(iterator keyvalue.KeyValueIterator) {

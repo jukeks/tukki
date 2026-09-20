@@ -1,6 +1,7 @@
 package db
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -16,7 +17,7 @@ import (
 
 var ErrKeyNotFound = errors.New("key not found in segments")
 
-func (db *Database) Get(key string) (string, error) {
+func (db *Database) Get(key []byte) ([]byte, error) {
 	db.mu.Lock()
 	value, err := db.ongoing.Get(key)
 	db.mu.Unlock()
@@ -25,13 +26,13 @@ func (db *Database) Get(key string) (string, error) {
 		return value, nil
 	}
 	if err == errTombstone {
-		return "", ErrKeyNotFound
+		return nil, ErrKeyNotFound
 	}
 
 	return db.getFromSegments(key)
 }
 
-func (db *Database) findContainingSegment(key string) (uint64, *os.File, error) {
+func (db *Database) findContainingSegment(key []byte) (uint64, *os.File, error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
@@ -46,7 +47,7 @@ func (db *Database) findContainingSegment(key string) (uint64, *os.File, error) 
 		}
 
 		index := db.indexes[segment.Id]
-		offset, found := index.Entries[key]
+		offset, found := index.Entries[string(key)]
 		if !found {
 			// false positive, key is not in segment
 			continue
@@ -63,25 +64,25 @@ func (db *Database) findContainingSegment(key string) (uint64, *os.File, error) 
 	return 0, nil, ErrKeyNotFound
 }
 
-func (db *Database) getFromSegments(key string) (string, error) {
+func (db *Database) getFromSegments(key []byte) ([]byte, error) {
 	offset, segmentFile, err := db.findContainingSegment(key)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer segmentFile.Close()
 
 	reader := sstable.NewSSTableSeeker(segmentFile)
 	entry, err := reader.ReadAt(offset)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	if entry.Key != key {
-		return "", fmt.Errorf("expected key %s, got %s", key, entry.Key)
+	if !bytes.Equal(entry.Key, key) {
+		return nil, fmt.Errorf("expected key %s, got %s", key, entry.Key)
 	}
 
 	if entry.Deleted {
-		return "", ErrKeyNotFound
+		return nil, ErrKeyNotFound
 	}
 
 	return entry.Value, nil
@@ -166,7 +167,7 @@ func (db *Database) GetSSTableReader(segmentId segments.SegmentId) (
 	return sstable.NewSSTableReader(f), func() { f.Close() }, nil
 }
 
-func (db *Database) Set(key, value string) error {
+func (db *Database) Set(key, value []byte) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
@@ -177,7 +178,7 @@ func (db *Database) Set(key, value string) error {
 	return db.ongoing.Set(key, value)
 }
 
-func (db *Database) Delete(key string) error {
+func (db *Database) Delete(key []byte) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
@@ -213,10 +214,10 @@ func (db *Database) handleWalSizeLimit() error {
 }
 
 func (db *Database) GetCursor() (*Cursor, error) {
-	return db.GetCursorWithRange("", "")
+	return db.GetCursorWithRange(nil, nil)
 }
 
-func (db *Database) GetCursorWithRange(start, end string) (*Cursor, error) {
+func (db *Database) GetCursorWithRange(start, end []byte) (*Cursor, error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
@@ -225,15 +226,15 @@ func (db *Database) GetCursorWithRange(start, end string) (*Cursor, error) {
 }
 
 type Pair struct {
-	Key   string
-	Value string
+	Key   []byte
+	Value []byte
 }
 
 type KeyValueIterator interface {
 	Next() (Pair, error)
 }
 
-func (db *Database) DeleteRange(start, end string) (int, error) {
+func (db *Database) DeleteRange(start, end []byte) (int, error) {
 	cursor, err := db.GetCursorWithRange(start, end)
 	if err != nil {
 		return 0, err

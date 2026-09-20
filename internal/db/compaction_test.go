@@ -1,6 +1,7 @@
 package db
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/jukeks/tukki/internal/storage/segments"
@@ -25,7 +26,7 @@ func verifyPairs(t *testing.T, db *Database, pairs ...Pair) {
 			t.Fatalf("failed to get key %s: %v", pair.Key, err)
 		}
 
-		if value != pair.Value {
+		if !bytes.Equal(value, pair.Value) {
 			t.Fatalf("expected value %s, got %s", pair.Value, value)
 		}
 	}
@@ -39,22 +40,22 @@ func TestCompactSegments(t *testing.T) {
 	}
 	defer db.Close()
 
-	writePairsAndSeal(t, db, Pair{Key: "a", Value: "1"}, Pair{Key: "b", Value: "2"})
+	writePairsAndSeal(t, db, Pair{Key: []byte("a"), Value: []byte("1")}, Pair{Key: []byte("b"), Value: []byte("2")})
 	if len(db.segments) != 1 {
 		t.Fatalf("expected segments map to have 1 element, got %v", db.segments)
 	}
 
-	writePairsAndSeal(t, db, Pair{Key: "c", Value: "3"}, Pair{Key: "d", Value: "4"})
+	writePairsAndSeal(t, db, Pair{Key: []byte("c"), Value: []byte("3")}, Pair{Key: []byte("d"), Value: []byte("4")})
 	if len(db.segments) != 2 {
 		t.Fatalf("expected segments map to have 2 elements, got %v", db.segments)
 	}
 
-	writePairsAndSeal(t, db, Pair{Key: "e", Value: "5"}, Pair{Key: "f", Value: "6"})
+	writePairsAndSeal(t, db, Pair{Key: []byte("e"), Value: []byte("5")}, Pair{Key: []byte("f"), Value: []byte("6")})
 	if len(db.segments) != 3 {
 		t.Fatalf("expected segments map to have 3 elements, got %v", db.segments)
 	}
 
-	writePairsAndSeal(t, db, Pair{Key: "b", Value: "7"})
+	writePairsAndSeal(t, db, Pair{Key: []byte("b"), Value: []byte("7")})
 
 	segmentMetadata := db.getSegmentsSorted()
 
@@ -77,12 +78,12 @@ func TestCompactSegments(t *testing.T) {
 	}
 
 	verifyPairs(t, db,
-		Pair{Key: "a", Value: "1"},
-		Pair{Key: "b", Value: "7"},
-		Pair{Key: "c", Value: "3"},
-		Pair{Key: "d", Value: "4"},
-		Pair{Key: "e", Value: "5"},
-		Pair{Key: "f", Value: "6"})
+		Pair{Key: []byte("a"), Value: []byte("1")},
+		Pair{Key: []byte("b"), Value: []byte("7")},
+		Pair{Key: []byte("c"), Value: []byte("3")},
+		Pair{Key: []byte("d"), Value: []byte("4")},
+		Pair{Key: []byte("e"), Value: []byte("5")},
+		Pair{Key: []byte("f"), Value: []byte("6")})
 }
 
 func TestDecideMergedSegments(t *testing.T) {

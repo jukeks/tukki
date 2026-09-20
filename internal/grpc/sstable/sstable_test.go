@@ -17,7 +17,7 @@ func TestSSTable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
-	if err := db.Set("key", "value"); err != nil {
+	if err := db.Set([]byte("key"), []byte("value")); err != nil {
 		t.Fatalf("failed to set key: %v", err)
 	}
 	if _, err := db.SealCurrentSegment(); err != nil {

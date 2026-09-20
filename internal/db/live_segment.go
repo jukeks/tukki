@@ -1,6 +1,7 @@
 package db
 
 import (
+	"bytes"
 	"errors"
 
 	"github.com/jukeks/tukki/internal/storage/files"
@@ -46,7 +47,7 @@ func (ls *LiveSegment) Close() error {
 	return ls.Wal.Close()
 }
 
-func (d *LiveSegment) Set(key, value string) error {
+func (d *LiveSegment) Set(key, value []byte) error {
 	err := d.Wal.Set(key, value)
 	if err != nil {
 		return err
@@ -58,19 +59,19 @@ func (d *LiveSegment) Set(key, value string) error {
 
 var errTombstone = errors.New("tombstone")
 
-func (d *LiveSegment) Get(key string) (string, error) {
+func (d *LiveSegment) Get(key []byte) ([]byte, error) {
 	value, found := d.Memtable.Get(key)
 	if found {
 		if value.Deleted {
-			return "", errTombstone
+			return nil, errTombstone
 		}
-		return value.Value, nil
+		return bytes.Clone(value.Value), nil
 	}
 
-	return "", ErrKeyNotFound
+	return nil, ErrKeyNotFound
 }
 
-func (d *LiveSegment) Delete(key string) error {
+func (d *LiveSegment) Delete(key []byte) error {
 	err := d.Wal.Delete(key)
 	if err != nil {
 		return err

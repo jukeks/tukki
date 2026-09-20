@@ -1,6 +1,7 @@
 package sstable
 
 import (
+	"bytes"
 	"io"
 
 	"github.com/jukeks/tukki/internal/storage/index"
@@ -47,7 +48,7 @@ func MergeSSTables(sstableWriter io.Writer, a, b keyvalue.KeyValueIterator,
 		}
 
 		// merge sorted entries by key
-		if entryA.Key < entryB.Key {
+		if bytes.Compare(entryA.Key, entryB.Key) < 0 {
 			if _, err := writer.Write(entryA); err != nil {
 				return nil, err
 			}
@@ -55,7 +56,7 @@ func MergeSSTables(sstableWriter io.Writer, a, b keyvalue.KeyValueIterator,
 			entryA, errA = a.Next()
 			continue
 		}
-		if entryA.Key > entryB.Key {
+		if bytes.Compare(entryA.Key, entryB.Key) > 0 {
 			if _, err := writer.Write(entryB); err != nil {
 				return nil, err
 			}
@@ -64,7 +65,7 @@ func MergeSSTables(sstableWriter io.Writer, a, b keyvalue.KeyValueIterator,
 			continue
 		}
 
-		if entryA.Key == entryB.Key {
+		if bytes.Equal(entryA.Key, entryB.Key) {
 			// b is newer segment
 			if _, err := writer.Write(entryB); err != nil {
 				return nil, err

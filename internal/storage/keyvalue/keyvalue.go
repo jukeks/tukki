@@ -1,13 +1,13 @@
 package keyvalue
 
 type Value struct {
-	Value   string
+	Value   []byte
 	Deleted bool
 }
 
 type IteratorEntry struct {
-	Key     string
-	Value   string
+	Key     []byte
+	Value   []byte
 	Deleted bool
 }
 

@@ -117,7 +117,7 @@ func (o *CompactSegmentsOperation) Execute() error {
 		openedSegments = append(openedSegments, subIter)
 	}
 
-	iterator, err := keyvalue.NewIterator("", "", true, openedSegments...)
+	iterator, err := keyvalue.NewIterator(nil, nil, true, openedSegments...)
 	if err != nil {
 		return fmt.Errorf("failed to create iterator: %w", err)
 	}
@@ -164,7 +164,7 @@ func (o *CompactSegmentsOperation) Execute() error {
 
 		members := segmentmembers.NewSegmentMembers(uint(len(offsets)))
 		for key := range offsets {
-			members.Add(key)
+			members.Add([]byte(key))
 		}
 		err = members.Save(o.dbDir, newSegment.MembersFile)
 		if err != nil {

@@ -2,6 +2,7 @@ package index
 
 import (
 	"bufio"
+	"bytes"
 	"io"
 	"sort"
 
@@ -11,7 +12,7 @@ import (
 )
 
 type IndexEntry struct {
-	Key    string
+	Key    []byte
 	Offset uint64
 }
 
@@ -39,7 +40,7 @@ func OpenIndex(dbDir string, filename files.Filename) (*Index, error) {
 			}
 			return &Index{}, err
 		}
-		entries[record.Key] = record.Offset
+		entries[string(record.Key)] = record.Offset
 		entryList = append(entryList, IndexEntry{
 			Key:    record.Key,
 			Offset: record.Offset,
@@ -74,13 +75,13 @@ func (w *IndexWriter) WriteFromOffsets(offsets OffsetMap) error {
 	offsetList := make([]IndexEntry, 0, len(offsets))
 	for key, offset := range offsets {
 		offsetList = append(offsetList, IndexEntry{
-			Key:    key,
+			Key:    []byte(key),
 			Offset: offset,
 		})
 	}
 
 	sort.Slice(offsetList, func(i, j int) bool {
-		return offsetList[i].Key < offsetList[j].Key
+		return bytes.Compare(offsetList[i].Key, offsetList[j].Key) < 0
 	})
 
 	bw := bufio.NewWriter(w.writer)

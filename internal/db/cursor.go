@@ -20,12 +20,12 @@ type Cursor struct {
 	memtable       memtable.Memtable
 	iterator       *keyvalue.Iterator
 
-	start string
-	end   string
+	start []byte
+	end   []byte
 }
 
-func NewCursor(dbDir,
-	start, end string, mt memtable.Memtable,
+func NewCursor(dbDir string,
+	start, end []byte, mt memtable.Memtable,
 	sortedSegments []segments.SegmentMetadata,
 	indexes map[segments.SegmentId]*index.Index) (*Cursor, error) {
 	cursor := &Cursor{

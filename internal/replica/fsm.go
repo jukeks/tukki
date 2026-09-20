@@ -36,7 +36,7 @@ func (f *fsm) Apply(l *raft.Log) interface{} {
 	}
 }
 
-func (f *fsm) applySet(key, value string) error {
+func (f *fsm) applySet(key, value []byte) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if err := f.db.Set(key, value); err != nil {
@@ -46,7 +46,7 @@ func (f *fsm) applySet(key, value string) error {
 	return nil
 }
 
-func (f *fsm) applyDelete(key string) error {
+func (f *fsm) applyDelete(key []byte) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if err := f.db.Delete(key); err != nil {
@@ -61,7 +61,7 @@ type deleteRangeResult struct {
 	err   error
 }
 
-func (f *fsm) applyDeleteRange(min, max string) *deleteRangeResult {
+func (f *fsm) applyDeleteRange(min, max []byte) *deleteRangeResult {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	count, err := f.db.DeleteRange(min, max)

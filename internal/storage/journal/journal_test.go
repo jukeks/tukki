@@ -19,8 +19,8 @@ func TestJournalWriter(t *testing.T) {
 
 	journalWriter := NewJournalWriter(f, WriteModeSync, nil)
 	err := journalWriter.Write(&walv1.WalEntry{
-		Key:     "key",
-		Value:   "value",
+		Key:     []byte("key"),
+		Value:   []byte("value"),
 		Deleted: false,
 	})
 	if err != nil {
@@ -40,11 +40,11 @@ func TestJournalWriter(t *testing.T) {
 		t.Fatalf("failed to read journal entry: %v", err)
 	}
 
-	if journalEntry.Key != "key" {
+	if string(journalEntry.Key) != "key" {
 		t.Fatalf("expected key to be 'key', got '%s'", journalEntry.Key)
 	}
 
-	if journalEntry.Value != "value" {
+	if string(journalEntry.Value) != "value" {
 		t.Fatalf("expected value to be 'value', got '%s'", journalEntry.Value)
 	}
 
@@ -68,15 +68,15 @@ func TestOpenJournal(t *testing.T) {
 	}
 
 	err = j.Writer.Write(&walv1.WalEntry{
-		Key:   "key1",
-		Value: "value1",
+		Key:   []byte("key1"),
+		Value: []byte("value1"),
 	})
 	if err != nil {
 		t.Fatalf("failed to write journal entry: %v", err)
 	}
 	err = j.Writer.Write(&walv1.WalEntry{
-		Key:   "key2",
-		Value: "value2",
+		Key:   []byte("key2"),
+		Value: []byte("value2"),
 	})
 	if err != nil {
 		t.Fatalf("failed to write journal entry: %v", err)
@@ -109,16 +109,16 @@ func TestOpenJournal(t *testing.T) {
 	if len(entries) != 2 {
 		t.Fatalf("expected 2 entries, got %d", len(entries))
 	}
-	if entries[0].Key != "key1" {
+	if string(entries[0].Key) != "key1" {
 		t.Fatalf("expected key1, got %s", entries[0].Key)
 	}
-	if entries[0].Value != "value1" {
+	if string(entries[0].Value) != "value1" {
 		t.Fatalf("expected value1, got %s", entries[0].Value)
 	}
-	if entries[1].Key != "key2" {
+	if string(entries[1].Key) != "key2" {
 		t.Fatalf("expected key2, got %s", entries[1].Key)
 	}
-	if entries[1].Value != "value2" {
+	if string(entries[1].Value) != "value2" {
 		t.Fatalf("expected value2, got %s", entries[1].Value)
 	}
 
@@ -152,8 +152,8 @@ func testJournalWriterSnapshot(t *testing.T, writeMode WriteMode) {
 	}
 
 	err = j.Writer.Write(&walv1.WalEntry{
-		Key:   "key1",
-		Value: "value1",
+		Key:   []byte("key1"),
+		Value: []byte("value1"),
 	})
 	if err != nil {
 		t.Fatalf("failed to write journal entry: %v", err)
@@ -197,7 +197,7 @@ func testJournalWriterSnapshot(t *testing.T, writeMode WriteMode) {
 	}
 	j2.Close()
 
-	if entries[0].Key != "key1" {
+	if string(entries[0].Key) != "key1" {
 		t.Fatalf("expected key1, got %s", entries[0].Key)
 	}
 }

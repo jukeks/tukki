@@ -23,8 +23,8 @@ const (
 
 type WalEntry struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Value         string                 `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	Key           []byte                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Value         []byte                 `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 	Deleted       bool                   `protobuf:"varint,3,opt,name=deleted,proto3" json:"deleted,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -60,18 +60,18 @@ func (*WalEntry) Descriptor() ([]byte, []int) {
 	return file_tukki_storage_wal_v1_wal_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *WalEntry) GetKey() string {
+func (x *WalEntry) GetKey() []byte {
 	if x != nil {
 		return x.Key
 	}
-	return ""
+	return nil
 }
 
-func (x *WalEntry) GetValue() string {
+func (x *WalEntry) GetValue() []byte {
 	if x != nil {
 		return x.Value
 	}
-	return ""
+	return nil
 }
 
 func (x *WalEntry) GetDeleted() bool {
@@ -87,8 +87,8 @@ const file_tukki_storage_wal_v1_wal_proto_rawDesc = "" +
 	"\n" +
 	"\x1etukki/storage/wal/v1/wal.proto\x12\x14tukki.storage.wal.v1\"L\n" +
 	"\bWalEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value\x12\x18\n" +
+	"\x03key\x18\x01 \x01(\fR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\fR\x05value\x12\x18\n" +
 	"\adeleted\x18\x03 \x01(\bR\adeletedB\xd1\x01\n" +
 	"\x18com.tukki.storage.wal.v1B\bWalProtoP\x01Z8github.com/jukeks/tukki/proto/tukki/storage/wal/v1;walv1\xa2\x02\x03TSW\xaa\x02\x14Tukki.Storage.Wal.V1\xca\x02\x14Tukki\\Storage\\Wal\\V1\xe2\x02 Tukki\\Storage\\Wal\\V1\\GPBMetadata\xea\x02\x17Tukki::Storage::Wal::V1b\x06proto3"
 
