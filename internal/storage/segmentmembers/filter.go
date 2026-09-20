@@ -58,7 +58,7 @@ func (sb *SegmentMembers) Add(key string) {
 }
 
 func (sb *SegmentMembers) Contains(key string) bool {
-	return sb.filter.Test([]byte(key))
+	return sb.filter.TestString(key)
 }
 
 func (sb *SegmentMembers) Fill(iterator keyvalue.KeyValueIterator) {
