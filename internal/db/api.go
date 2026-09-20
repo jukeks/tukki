@@ -16,7 +16,10 @@ import (
 var ErrKeyNotFound = errors.New("key not found in segments")
 
 func (db *Database) Get(key string) (string, error) {
+	db.mu.Lock()
 	value, err := db.ongoing.Get(key)
+	db.mu.Unlock()
+
 	if err == nil {
 		return value, nil
 	}
@@ -29,7 +32,10 @@ func (db *Database) Get(key string) (string, error) {
 
 func (db *Database) getFromSegments(key string) (string, error) {
 	for _, segment := range db.getSegmentsSorted() {
-		contains := db.members[segment.Id].Contains(key)
+		db.mu.Lock()
+		members := db.members[segment.Id]
+		db.mu.Unlock()
+		contains := members.Contains(key)
 		if !contains {
 			// this looks unnecessary right now, but eventually all segment
 			// indexes might not be in memory, so it's beneficial to check
@@ -37,7 +43,10 @@ func (db *Database) getFromSegments(key string) (string, error) {
 			continue
 		}
 
-		offset, found := db.indexes[segment.Id].Entries[key]
+		db.mu.Lock()
+		index := db.indexes[segment.Id]
+		db.mu.Unlock()
+		offset, found := index.Entries[key]
 		if !found {
 			// false positive, key is not in segment
 			continue
@@ -151,6 +160,9 @@ func (db *Database) GetSSTableReader(segmentId segments.SegmentId) (
 }
 
 func (db *Database) Set(key, value string) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
 	if err := db.handleWalSizeLimit(); err != nil {
 		return err
 	}
@@ -159,6 +171,9 @@ func (db *Database) Set(key, value string) error {
 }
 
 func (db *Database) Delete(key string) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
 	if err := db.handleWalSizeLimit(); err != nil {
 		return err
 	}

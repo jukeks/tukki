@@ -192,6 +192,7 @@ func (db *Database) Initialize() error {
 	return nil
 }
 
+// Not threadsafe, should be called with holding mutex on concurrent callsites
 func (db *Database) SealCurrentSegment() (*LiveSegment, error) {
 	ongoingSegment := db.ongoing
 	nextSegmentId := db.getNextSegmentId()
@@ -217,7 +218,6 @@ func (db *Database) SealCurrentSegment() (*LiveSegment, error) {
 		return nil, err
 	}
 
-	db.mu.Lock()
 	db.segments[ongoingSegment.Segment.Id] = ongoingSegment.Segment
 
 	db.ongoing = nextSegment
@@ -249,7 +249,6 @@ func (db *Database) SealCurrentSegment() (*LiveSegment, error) {
 		return nil, err
 	}
 	delete(db.operations, op.Id())
-	db.mu.Unlock()
 
 	log.Printf("sealed segment %d", ongoingSegment.Segment.Id)
 

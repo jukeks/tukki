@@ -8,7 +8,7 @@ proto:
 		buf generate .
 
 test:
-	go test ./...
+	go test -race ./...
 
 build:
 	go build -v -o ./bin/server ./cmd/server
@@ -27,7 +27,7 @@ staticcheck:
 	staticcheck ./...
 
 test-cover:
-	go test -coverprofile=coverage.out ./... -coverpkg=./...
+	go test -race -coverprofile=coverage.out ./... -coverpkg=./...
 
 cover: test-cover
 	go tool cover -html=coverage.out
