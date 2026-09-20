@@ -37,6 +37,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to open database: %v", err)
 	}
+	defer db.Close()
 
 	if *metadata {
 		db.PrintMetadata()
