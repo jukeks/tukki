@@ -250,6 +250,6 @@ func (n *Node) DeleteRange(min string, max string) (uint64, error) {
 	if f.Error() != nil {
 		return 0, f.Error()
 	}
-	err, _ = f.Response().(error)
-	return 0, err
+	res, _ := f.Response().(*deleteRangeResult)
+	return uint64(res.count), res.err
 }

@@ -36,7 +36,7 @@ func (f *fsm) Apply(l *raft.Log) interface{} {
 	}
 }
 
-func (f *fsm) applySet(key, value string) interface{} {
+func (f *fsm) applySet(key, value string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if err := f.db.Set(key, value); err != nil {
@@ -46,7 +46,7 @@ func (f *fsm) applySet(key, value string) interface{} {
 	return nil
 }
 
-func (f *fsm) applyDelete(key string) interface{} {
+func (f *fsm) applyDelete(key string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if err := f.db.Delete(key); err != nil {
@@ -56,15 +56,28 @@ func (f *fsm) applyDelete(key string) interface{} {
 	return nil
 }
 
-func (f *fsm) applyDeleteRange(min, max string) interface{} {
+type deleteRangeResult struct {
+	count int
+	err   error
+}
+
+func (f *fsm) applyDeleteRange(min, max string) *deleteRangeResult {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	count, err := f.db.DeleteRange(min, max)
 	if err != nil {
 		f.logger.Printf("failed to apply delete range min %s max %s: %s", min, max, err)
-		return err
+		res := deleteRangeResult{
+			err: err,
+		}
+
+		return &res
 	}
-	return count
+	res := deleteRangeResult{
+		count: count,
+		err:   err,
+	}
+	return &res
 }
 
 type snapshot struct {
@@ -91,6 +104,9 @@ func (f *fsm) Restore(rc io.ReadCloser) error {
 	if err != nil {
 		return err
 	}
+
+	f.mu.Lock()
+	defer f.mu.Unlock()
 
 	f.db.Close()
 
