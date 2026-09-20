@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"sort"
 
 	"github.com/jukeks/tukki/internal/storage/files"
@@ -30,11 +31,12 @@ func (db *Database) Get(key string) (string, error) {
 	return db.getFromSegments(key)
 }
 
-func (db *Database) getFromSegments(key string) (string, error) {
-	for _, segment := range db.getSegmentsSorted() {
-		db.mu.Lock()
+func (db *Database) findContainingSegment(key string) (uint64, *os.File, error) {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	for _, segment := range db.getSegmentsSortedUnlocked() {
 		members := db.members[segment.Id]
-		db.mu.Unlock()
 		contains := members.Contains(key)
 		if !contains {
 			// this looks unnecessary right now, but eventually all segment
@@ -43,9 +45,7 @@ func (db *Database) getFromSegments(key string) (string, error) {
 			continue
 		}
 
-		db.mu.Lock()
 		index := db.indexes[segment.Id]
-		db.mu.Unlock()
 		offset, found := index.Entries[key]
 		if !found {
 			// false positive, key is not in segment
@@ -54,28 +54,37 @@ func (db *Database) getFromSegments(key string) (string, error) {
 
 		segmentFile, err := files.OpenFile(db.dbDir, segment.SegmentFile)
 		if err != nil {
-			return "", err
-		}
-		defer segmentFile.Close()
-
-		reader := sstable.NewSSTableSeeker(segmentFile)
-		entry, err := reader.ReadAt(offset)
-		if err != nil {
-			return "", err
+			return 0, nil, err
 		}
 
-		if entry.Key != key {
-			return "", fmt.Errorf("expected key %s, got %s", key, entry.Key)
-		}
-
-		if entry.Deleted {
-			return "", ErrKeyNotFound
-		}
-
-		return entry.Value, nil
+		return offset, segmentFile, nil
 	}
 
-	return "", ErrKeyNotFound
+	return 0, nil, ErrKeyNotFound
+}
+
+func (db *Database) getFromSegments(key string) (string, error) {
+	offset, segmentFile, err := db.findContainingSegment(key)
+	if err != nil {
+		return "", err
+	}
+	defer segmentFile.Close()
+
+	reader := sstable.NewSSTableSeeker(segmentFile)
+	entry, err := reader.ReadAt(offset)
+	if err != nil {
+		return "", err
+	}
+
+	if entry.Key != key {
+		return "", fmt.Errorf("expected key %s, got %s", key, entry.Key)
+	}
+
+	if entry.Deleted {
+		return "", ErrKeyNotFound
+	}
+
+	return entry.Value, nil
 }
 
 func (db *Database) getSegmentsSorted() []segments.SegmentMetadata {
@@ -115,9 +124,6 @@ func (db *Database) getIndexesCopyUnlocked() map[segments.SegmentId]*index.Index
 func (db *Database) getStateCopy() (
 	memtable.Memtable, []segments.SegmentMetadata, map[segments.SegmentId]*index.Index,
 ) {
-	db.mu.Lock()
-	defer db.mu.Unlock()
-
 	mt := db.ongoing.Memtable.Copy()
 	segments := db.getSegmentsSortedUnlocked()
 	index := db.getIndexesCopyUnlocked()
@@ -144,8 +150,9 @@ func (db *Database) GetSSTableReader(segmentId segments.SegmentId) (
 	*sstable.SSTableReader, Cleanup, error,
 ) {
 	db.mu.Lock()
+	defer db.mu.Unlock()
+
 	segmentMetadata, ok := db.segments[segmentId]
-	db.mu.Unlock()
 
 	if !ok {
 		return nil, nil, fmt.Errorf("segment not found: %d", segmentId)
@@ -210,6 +217,9 @@ func (db *Database) GetCursor() (*Cursor, error) {
 }
 
 func (db *Database) GetCursorWithRange(start, end string) (*Cursor, error) {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
 	mt, segments, indexes := db.getStateCopy()
 	return NewCursor(db.dbDir, start, end, mt, segments, indexes)
 }

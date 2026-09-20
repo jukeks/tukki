@@ -1,6 +1,7 @@
 package memtable
 
 import (
+	"fmt"
 	"io"
 	"log"
 
@@ -18,7 +19,7 @@ func OpenWal(dbDir string, journalName files.Filename, mode journal.WriteMode, m
 		return readJournal(r, mt)
 	}
 	if journalName == "" {
-		log.Fatalf("journal name is empty")
+		return nil, fmt.Errorf("empty journal filename")
 	}
 	j, err := journal.OpenJournal(dbDir, journalName, mode, handle)
 	if err != nil {
