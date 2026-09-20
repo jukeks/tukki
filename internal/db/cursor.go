@@ -33,11 +33,13 @@ func NewCursor(dbDir,
 		allSegments: sortedSegments, indexes: indexes, start: start, end: end}
 
 	if err := cursor.open(); err != nil {
+		cursor.Close()
 		return nil, fmt.Errorf("failed to open iterator: %w", err)
 	}
 
 	iter, err := keyvalue.NewIterator(start, end, false, cursor.openedSegments...)
 	if err != nil {
+		cursor.Close()
 		return nil, fmt.Errorf("failed to create iterator: %w", err)
 	}
 
