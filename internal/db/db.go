@@ -99,7 +99,7 @@ func OpenDatabaseWithConfig(dbDir string, config Config) (*Database, error) {
 			// TODO remove old files
 		}
 
-		err = db.Initialize()
+		err = db.initialize()
 		if err != nil {
 			log.Printf("failed to initialize segment manager: %v", err)
 			return nil, err
@@ -135,7 +135,7 @@ func OpenDatabaseWithConfig(dbDir string, config Config) (*Database, error) {
 	return db, nil
 }
 
-func (db *Database) GetOnGoingSegment() *LiveSegment {
+func (db *Database) getOnGoingSegment() *LiveSegment {
 	return db.ongoing
 }
 
@@ -157,7 +157,7 @@ func lsToOs(ls *LiveSegment) *segments.OpenSegment {
 	}
 }
 
-func (db *Database) Initialize() error {
+func (db *Database) initialize() error {
 	firstSegment := NewLiveSegment(0)
 
 	op := segments.NewAddSegmentOperation(

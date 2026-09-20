@@ -81,7 +81,7 @@ func TestSegmentManager(t *testing.T) {
 		t.Fatalf("failed to open segment manager: %v", err)
 	}
 
-	ongoing := db.GetOnGoingSegment()
+	ongoing := db.getOnGoingSegment()
 	if ongoing.Segment.Id != 0 {
 		t.Fatalf("expected ongoing segment id to be 0, got %d", ongoing.Segment.Id)
 	}
@@ -130,7 +130,7 @@ func TestSegmentManager(t *testing.T) {
 		t.Fatalf("expected segments map to have 1 element, got %v", db.segments)
 	}
 
-	ongoing = db.GetOnGoingSegment()
+	ongoing = db.getOnGoingSegment()
 	if ongoing.Segment.Id != 1 {
 		t.Fatalf("expected ongoing segment id to be 1, got %d", ongoing.Segment.Id)
 	}
@@ -154,7 +154,7 @@ func TestMergeSegments(t *testing.T) {
 		t.Fatalf("failed to open segment manager: %v", err)
 	}
 
-	ongoing := db.GetOnGoingSegment()
+	ongoing := db.getOnGoingSegment()
 	writeLiveSegment(t, ongoing, "key1", "value1")
 	writeLiveSegment(t, ongoing, "key2", "value2")
 	if err := ongoing.Close(); err != nil {
