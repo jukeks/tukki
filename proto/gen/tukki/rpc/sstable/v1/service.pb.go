@@ -67,8 +67,8 @@ func (x *GetSstableRequest) GetId() uint64 {
 
 type SSTableRecord struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Value         string                 `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	Key           []byte                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Value         []byte                 `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 	Deleted       bool                   `protobuf:"varint,3,opt,name=deleted,proto3" json:"deleted,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -104,18 +104,18 @@ func (*SSTableRecord) Descriptor() ([]byte, []int) {
 	return file_tukki_rpc_sstable_v1_service_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *SSTableRecord) GetKey() string {
+func (x *SSTableRecord) GetKey() []byte {
 	if x != nil {
 		return x.Key
 	}
-	return ""
+	return nil
 }
 
-func (x *SSTableRecord) GetValue() string {
+func (x *SSTableRecord) GetValue() []byte {
 	if x != nil {
 		return x.Value
 	}
-	return ""
+	return nil
 }
 
 func (x *SSTableRecord) GetDeleted() bool {
@@ -177,8 +177,8 @@ const file_tukki_rpc_sstable_v1_service_proto_rawDesc = "" +
 	"\x11GetSstableRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\"Q\n" +
 	"\rSSTableRecord\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value\x12\x18\n" +
+	"\x03key\x18\x01 \x01(\fR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\fR\x05value\x12\x18\n" +
 	"\adeleted\x18\x03 \x01(\bR\adeleted\"Q\n" +
 	"\x12GetSstableResponse\x12;\n" +
 	"\x06record\x18\x01 \x01(\v2#.tukki.rpc.sstable.v1.SSTableRecordR\x06record2u\n" +

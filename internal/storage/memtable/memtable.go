@@ -1,6 +1,7 @@
 package memtable
 
 import (
+	"bytes"
 	"io"
 
 	"github.com/emirpasic/gods/trees/redblacktree"
@@ -8,9 +9,9 @@ import (
 )
 
 type Memtable interface {
-	Get(key string) (keyvalue.Value, bool)
-	Insert(key string, value string)
-	Delete(key string)
+	Get(key []byte) (keyvalue.Value, bool)
+	Insert(key []byte, value []byte)
+	Delete(key []byte)
 	Iterate() keyvalue.KeyValueIterator
 	MemberCount() int
 	Size() uint64
@@ -29,26 +30,28 @@ type memtableRedBlackTree struct {
 	size uint64
 }
 
-func (m *memtableRedBlackTree) Get(key string) (keyvalue.Value, bool) {
+func (m *memtableRedBlackTree) Get(key []byte) (keyvalue.Value, bool) {
 	value, found := m.t.Get(string(key))
 	if !found {
 		return keyvalue.Value{}, false
 	}
 
-	return value.(keyvalue.Value), true
+	result := value.(keyvalue.Value)
+	result.Value = bytes.Clone(result.Value)
+	return result, true
 }
 
-func (m *memtableRedBlackTree) Delete(key string) {
+func (m *memtableRedBlackTree) Delete(key []byte) {
 	m.size += uint64(len(key))
 	m.t.Put(string(key), keyvalue.Value{
 		Deleted: true,
 	})
 }
 
-func (m *memtableRedBlackTree) Insert(key, value string) {
+func (m *memtableRedBlackTree) Insert(key, value []byte) {
 	m.size += uint64(len(key) + len(value))
 	m.t.Put(string(key), keyvalue.Value{
-		Value: value,
+		Value: bytes.Clone(value),
 	})
 }
 
@@ -79,8 +82,8 @@ func (i *memtableRedBlackTreeIterator) Next() (keyvalue.IteratorEntry, error) {
 	key := i.iter.Key().(string)
 	value := i.iter.Value().(keyvalue.Value)
 	return keyvalue.IteratorEntry{
-		Key:     key,
-		Value:   value.Value,
+		Key:     []byte(key),
+		Value:   bytes.Clone(value.Value),
 		Deleted: value.Deleted,
 	}, nil
 }

@@ -1,6 +1,7 @@
 package keyvalue
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"log"
@@ -8,31 +9,31 @@ import (
 
 type SubIterator interface {
 	Get() (IteratorEntry, error)
-	Seek(key string) error
+	Seek(key []byte) error
 	Progress()
 	Close() error
 }
 
 type Iterator struct {
-	min              string
-	max              string
+	min              []byte
+	max              []byte
 	returnTombstones bool
 	iterators        []SubIterator
 	usableIterators  []SubIterator
 }
 
-func NewIterator(min, max string, returnTombstones bool, iterators ...SubIterator) (*Iterator, error) {
+func NewIterator(min, max []byte, returnTombstones bool, iterators ...SubIterator) (*Iterator, error) {
 	usableIterators := make([]SubIterator, 0, len(iterators))
 	usableIterators = append(usableIterators, iterators...)
 	i := &Iterator{
-		min:              min,
-		max:              max,
+		min:              bytes.Clone(min),
+		max:              bytes.Clone(max),
 		returnTombstones: returnTombstones,
 		iterators:        iterators,
 		usableIterators:  usableIterators,
 	}
 
-	if min != "" {
+	if len(min) != 0 {
 		i.usableIterators = make([]SubIterator, 0)
 		for _, iter := range iterators {
 			if err := iter.Seek(min); err != nil {
@@ -68,7 +69,7 @@ func (i *Iterator) Next() (IteratorEntry, error) {
 		canProceed := false
 		for _, iter := range i.usableIterators {
 			current, err := iter.Get()
-			if err == nil && (i.max == "" || current.Key <= i.max) {
+			if err == nil && (len(i.max) == 0 || bytes.Compare(current.Key, i.max) <= 0) {
 				result = iter
 				canProceed = true
 				break
@@ -87,12 +88,12 @@ func (i *Iterator) Next() (IteratorEntry, error) {
 				continue
 			}
 
-			if i.max != "" && current.Key > i.max {
+			if len(i.max) != 0 && bytes.Compare(current.Key, i.max) > 0 {
 				continue
 			}
 
 			currentResult, _ := result.Get()
-			if current.Key < currentResult.Key {
+			if bytes.Compare(current.Key, currentResult.Key) < 0 {
 				result = iter
 			}
 		}
@@ -104,7 +105,7 @@ func (i *Iterator) Next() (IteratorEntry, error) {
 		// to avoid exposing old value
 		for _, iter := range i.usableIterators {
 			current, _ := iter.Get()
-			if current.Key == ret.Key {
+			if bytes.Equal(current.Key, ret.Key) {
 				iter.Progress()
 			}
 		}

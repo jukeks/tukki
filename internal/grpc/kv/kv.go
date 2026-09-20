@@ -9,16 +9,16 @@ import (
 )
 
 type Pair struct {
-	Key   string
-	Value string
+	Key   []byte
+	Value []byte
 }
 
 type DB interface {
-	Get(key string) (string, error)
-	GetRange(min, max string) (db.KeyValueIterator, error)
-	Set(key, value string) error
-	Delete(key string) error
-	DeleteRange(min, max string) (uint64, error)
+	Get(key []byte) ([]byte, error)
+	GetRange(min, max []byte) (db.KeyValueIterator, error)
+	Set(key, value []byte) error
+	Delete(key []byte) error
+	DeleteRange(min, max []byte) (uint64, error)
 }
 
 type KVServer struct {

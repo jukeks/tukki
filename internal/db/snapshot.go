@@ -200,7 +200,7 @@ func (db *Database) RestoreSegment(segment segments.SegmentMetadata, iterator ke
 
 	members := segmentmembers.NewSegmentMembers(uint(len(offsets)))
 	for key := range offsets {
-		members.Add(key)
+		members.Add([]byte(key))
 	}
 	if err := members.Save(db.dbDir, segment.MembersFile); err != nil {
 		return fmt.Errorf("failed to save members: %w", err)

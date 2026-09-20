@@ -23,8 +23,8 @@ const (
 
 type SSTableRecord struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Value         string                 `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	Key           []byte                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Value         []byte                 `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 	Deleted       bool                   `protobuf:"varint,3,opt,name=deleted,proto3" json:"deleted,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -60,18 +60,18 @@ func (*SSTableRecord) Descriptor() ([]byte, []int) {
 	return file_tukki_storage_sstable_v1_sstable_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *SSTableRecord) GetKey() string {
+func (x *SSTableRecord) GetKey() []byte {
 	if x != nil {
 		return x.Key
 	}
-	return ""
+	return nil
 }
 
-func (x *SSTableRecord) GetValue() string {
+func (x *SSTableRecord) GetValue() []byte {
 	if x != nil {
 		return x.Value
 	}
-	return ""
+	return nil
 }
 
 func (x *SSTableRecord) GetDeleted() bool {
@@ -87,8 +87,8 @@ const file_tukki_storage_sstable_v1_sstable_proto_rawDesc = "" +
 	"\n" +
 	"&tukki/storage/sstable/v1/sstable.proto\x12\x18tukki.storage.sstable.v1\"Q\n" +
 	"\rSSTableRecord\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value\x12\x18\n" +
+	"\x03key\x18\x01 \x01(\fR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\fR\x05value\x12\x18\n" +
 	"\adeleted\x18\x03 \x01(\bR\adeletedB\xf1\x01\n" +
 	"\x1ccom.tukki.storage.sstable.v1B\fSstableProtoP\x01Z@github.com/jukeks/tukki/proto/tukki/storage/sstable/v1;sstablev1\xa2\x02\x03TSS\xaa\x02\x18Tukki.Storage.Sstable.V1\xca\x02\x18Tukki\\Storage\\Sstable\\V1\xe2\x02$Tukki\\Storage\\Sstable\\V1\\GPBMetadata\xea\x02\x1bTukki::Storage::Sstable::V1b\x06proto3"
 

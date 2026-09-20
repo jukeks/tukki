@@ -102,7 +102,7 @@ func read(ctx context.Context, client kvv1.KvServiceClient, keys []string, recMa
 	for _, key := range keys {
 		start := time.Now()
 		resp, err := client.Query(ctx, &kvv1.QueryRequest{
-			Key: key,
+			Key: []byte(key),
 		})
 		readMeasurements.AddTime(time.Since(start))
 
@@ -113,7 +113,7 @@ func read(ctx context.Context, client kvv1.KvServiceClient, keys []string, recMa
 			log.Fatalf("can not get key-value pair %v", resp.GetError().Message)
 		}
 
-		if resp.GetPair().Value != recMap[key] {
+		if string(resp.GetPair().Value) != recMap[key] {
 			log.Fatalf("expected\n%s, \n\n\ngot\n%s", recMap[key], resp.GetPair().Value)
 		}
 
@@ -125,8 +125,8 @@ func write(ctx context.Context, client kvv1.KvServiceClient, keys []string, recM
 		start := time.Now()
 		resp, err := client.Set(ctx, &kvv1.SetRequest{
 			Pair: &kvv1.KvPair{
-				Key:   key,
-				Value: recMap[key],
+				Key:   []byte(key),
+				Value: []byte(recMap[key]),
 			},
 		})
 		writeMeasurements.AddTime(time.Since(start))

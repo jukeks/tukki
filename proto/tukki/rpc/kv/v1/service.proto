@@ -14,12 +14,12 @@ service KvService {
 }
 
 message QueryRequest {
-    string key = 1;
+    bytes key = 1;
 }
 
 message QueryRangeRequest {
-    string min = 1;
-    string max = 2;
+    bytes min = 1;
+    bytes max = 2;
 }
 
 message SetRequest {
@@ -27,17 +27,17 @@ message SetRequest {
 }
 
 message DeleteRequest {
-    string key = 1;
+    bytes key = 1;
 }
 
 message DeleteRangeRequest {
-    string min = 1;
-    string max = 2;
+    bytes min = 1;
+    bytes max = 2;
 }
 
 message KvPair {
-    string key = 1;
-    string value = 2;
+    bytes key = 1;
+    bytes value = 2;
 }
 
 message Error {

@@ -1,6 +1,7 @@
 package db
 
 import (
+	"bytes"
 	"io"
 	"testing"
 )
@@ -14,11 +15,11 @@ func setupDB(t *testing.T) (*Database, []Pair) {
 
 	// segment 1
 	pairs := []Pair{
-		{"key1", "value1"},
-		{"key5", "value5"},
-		{"key2", "value2"},
-		{"key4", "value4"},
-		{"key9", "value9"},
+		{[]byte("key1"), []byte("value1")},
+		{[]byte("key5"), []byte("value5")},
+		{[]byte("key2"), []byte("value2")},
+		{[]byte("key4"), []byte("value4")},
+		{[]byte("key9"), []byte("value9")},
 	}
 	for _, pair := range pairs {
 		if err := db.Set(pair.Key, pair.Value); err != nil {
@@ -32,16 +33,16 @@ func setupDB(t *testing.T) (*Database, []Pair) {
 
 	// segment 2
 	pairs = []Pair{
-		{"key1", "value1-new"},
-		{"key3", "value3"},
-		{"key5", "value5-new"},
+		{[]byte("key1"), []byte("value1-new")},
+		{[]byte("key3"), []byte("value3")},
+		{[]byte("key5"), []byte("value5-new")},
 	}
 	for _, pair := range pairs {
 		if err := db.Set(pair.Key, pair.Value); err != nil {
 			t.Fatalf("failed to set key: %v", err)
 		}
 	}
-	if err := db.Delete("key4"); err != nil {
+	if err := db.Delete([]byte("key4")); err != nil {
 		t.Fatalf("failed to delete key: %v", err)
 	}
 
@@ -52,9 +53,9 @@ func setupDB(t *testing.T) (*Database, []Pair) {
 
 	// memtable
 	pairs = []Pair{
-		{"key6", "value6"},
-		{"key7", "value7"},
-		{"key1", "value1-new-new"},
+		{[]byte("key6"), []byte("value6")},
+		{[]byte("key7"), []byte("value7")},
+		{[]byte("key1"), []byte("value1-new-new")},
 	}
 	for _, pair := range pairs {
 		if err := db.Set(pair.Key, pair.Value); err != nil {
@@ -63,13 +64,13 @@ func setupDB(t *testing.T) (*Database, []Pair) {
 	}
 
 	expected := []Pair{
-		{"key1", "value1-new-new"},
-		{"key2", "value2"},
-		{"key3", "value3"},
-		{"key5", "value5-new"},
-		{"key6", "value6"},
-		{"key7", "value7"},
-		{"key9", "value9"},
+		{[]byte("key1"), []byte("value1-new-new")},
+		{[]byte("key2"), []byte("value2")},
+		{[]byte("key3"), []byte("value3")},
+		{[]byte("key5"), []byte("value5-new")},
+		{[]byte("key6"), []byte("value6")},
+		{[]byte("key7"), []byte("value7")},
+		{[]byte("key9"), []byte("value9")},
 	}
 
 	return db, expected
@@ -91,10 +92,10 @@ func TestCursorWithoutRange(t *testing.T) {
 			t.Fatalf("failed to get key: %v", err)
 		}
 		t.Logf("entry: %v", entry)
-		if entry.Key != pair.Key {
+		if !bytes.Equal(entry.Key, pair.Key) {
 			t.Fatalf("expected key %s, got %s", pair.Key, entry.Key)
 		}
-		if entry.Value != pair.Value {
+		if !bytes.Equal(entry.Value, pair.Value) {
 			t.Fatalf("expected value %s, got %s", pair.Value, entry.Value)
 		}
 	}
@@ -109,7 +110,7 @@ func TestCursorWithRange(t *testing.T) {
 	db, expected := setupDB(t)
 	defer db.Close()
 
-	iterator, err := db.GetCursorWithRange("key2", "key5")
+	iterator, err := db.GetCursorWithRange([]byte("key2"), []byte("key5"))
 	if err != nil {
 		t.Fatalf("failed to get iterator: %v", err)
 	}
@@ -122,10 +123,10 @@ func TestCursorWithRange(t *testing.T) {
 			t.Fatalf("failed to get key: %v", err)
 		}
 		t.Logf("entry: %v", entry)
-		if entry.Key != pair.Key {
+		if !bytes.Equal(entry.Key, pair.Key) {
 			t.Fatalf("expected key %s, got %s", pair.Key, entry.Key)
 		}
-		if entry.Value != pair.Value {
+		if !bytes.Equal(entry.Value, pair.Value) {
 			t.Fatalf("expected value %s, got %s", pair.Value, entry.Value)
 		}
 	}
@@ -140,7 +141,7 @@ func TestCursorWithRangeAndEmptyStart(t *testing.T) {
 	db, expected := setupDB(t)
 	defer db.Close()
 
-	iterator, err := db.GetCursorWithRange("", "key5")
+	iterator, err := db.GetCursorWithRange([]byte(""), []byte("key5"))
 	if err != nil {
 		t.Fatalf("failed to get iterator: %v", err)
 	}
@@ -153,10 +154,10 @@ func TestCursorWithRangeAndEmptyStart(t *testing.T) {
 			t.Fatalf("failed to get key: %v", err)
 		}
 		t.Logf("entry: %v", entry)
-		if entry.Key != pair.Key {
+		if !bytes.Equal(entry.Key, pair.Key) {
 			t.Fatalf("expected key %s, got %s", pair.Key, entry.Key)
 		}
-		if entry.Value != pair.Value {
+		if !bytes.Equal(entry.Value, pair.Value) {
 			t.Fatalf("expected value %s, got %s", pair.Value, entry.Value)
 		}
 	}
@@ -171,7 +172,7 @@ func TestCursorWithRangeAndEmptyEnd(t *testing.T) {
 	db, expected := setupDB(t)
 	defer db.Close()
 
-	iterator, err := db.GetCursorWithRange("key2", "")
+	iterator, err := db.GetCursorWithRange([]byte("key2"), []byte(""))
 	if err != nil {
 		t.Fatalf("failed to get iterator: %v", err)
 	}
@@ -183,10 +184,10 @@ func TestCursorWithRangeAndEmptyEnd(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to get key: %v", err)
 		}
-		if entry.Key != pair.Key {
+		if !bytes.Equal(entry.Key, pair.Key) {
 			t.Fatalf("expected key %s, got %s", pair.Key, entry.Key)
 		}
-		if entry.Value != pair.Value {
+		if !bytes.Equal(entry.Value, pair.Value) {
 			t.Fatalf("expected value %s, got %s", pair.Value, entry.Value)
 		}
 	}

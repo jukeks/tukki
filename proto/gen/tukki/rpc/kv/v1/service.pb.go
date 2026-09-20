@@ -23,7 +23,7 @@ const (
 
 type QueryRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Key           []byte                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -58,17 +58,17 @@ func (*QueryRequest) Descriptor() ([]byte, []int) {
 	return file_tukki_rpc_kv_v1_service_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *QueryRequest) GetKey() string {
+func (x *QueryRequest) GetKey() []byte {
 	if x != nil {
 		return x.Key
 	}
-	return ""
+	return nil
 }
 
 type QueryRangeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Min           string                 `protobuf:"bytes,1,opt,name=min,proto3" json:"min,omitempty"`
-	Max           string                 `protobuf:"bytes,2,opt,name=max,proto3" json:"max,omitempty"`
+	Min           []byte                 `protobuf:"bytes,1,opt,name=min,proto3" json:"min,omitempty"`
+	Max           []byte                 `protobuf:"bytes,2,opt,name=max,proto3" json:"max,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -103,18 +103,18 @@ func (*QueryRangeRequest) Descriptor() ([]byte, []int) {
 	return file_tukki_rpc_kv_v1_service_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *QueryRangeRequest) GetMin() string {
+func (x *QueryRangeRequest) GetMin() []byte {
 	if x != nil {
 		return x.Min
 	}
-	return ""
+	return nil
 }
 
-func (x *QueryRangeRequest) GetMax() string {
+func (x *QueryRangeRequest) GetMax() []byte {
 	if x != nil {
 		return x.Max
 	}
-	return ""
+	return nil
 }
 
 type SetRequest struct {
@@ -163,7 +163,7 @@ func (x *SetRequest) GetPair() *KvPair {
 
 type DeleteRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Key           []byte                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -198,17 +198,17 @@ func (*DeleteRequest) Descriptor() ([]byte, []int) {
 	return file_tukki_rpc_kv_v1_service_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *DeleteRequest) GetKey() string {
+func (x *DeleteRequest) GetKey() []byte {
 	if x != nil {
 		return x.Key
 	}
-	return ""
+	return nil
 }
 
 type DeleteRangeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Min           string                 `protobuf:"bytes,1,opt,name=min,proto3" json:"min,omitempty"`
-	Max           string                 `protobuf:"bytes,2,opt,name=max,proto3" json:"max,omitempty"`
+	Min           []byte                 `protobuf:"bytes,1,opt,name=min,proto3" json:"min,omitempty"`
+	Max           []byte                 `protobuf:"bytes,2,opt,name=max,proto3" json:"max,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -243,24 +243,24 @@ func (*DeleteRangeRequest) Descriptor() ([]byte, []int) {
 	return file_tukki_rpc_kv_v1_service_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *DeleteRangeRequest) GetMin() string {
+func (x *DeleteRangeRequest) GetMin() []byte {
 	if x != nil {
 		return x.Min
 	}
-	return ""
+	return nil
 }
 
-func (x *DeleteRangeRequest) GetMax() string {
+func (x *DeleteRangeRequest) GetMax() []byte {
 	if x != nil {
 		return x.Max
 	}
-	return ""
+	return nil
 }
 
 type KvPair struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Value         string                 `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	Key           []byte                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Value         []byte                 `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -295,18 +295,18 @@ func (*KvPair) Descriptor() ([]byte, []int) {
 	return file_tukki_rpc_kv_v1_service_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *KvPair) GetKey() string {
+func (x *KvPair) GetKey() []byte {
 	if x != nil {
 		return x.Key
 	}
-	return ""
+	return nil
 }
 
-func (x *KvPair) GetValue() string {
+func (x *KvPair) GetValue() []byte {
 	if x != nil {
 		return x.Value
 	}
-	return ""
+	return nil
 }
 
 type Error struct {
@@ -625,21 +625,21 @@ const file_tukki_rpc_kv_v1_service_proto_rawDesc = "" +
 	"\n" +
 	"\x1dtukki/rpc/kv/v1/service.proto\x12\x0ftukki.rpc.kv.v1\" \n" +
 	"\fQueryRequest\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\"7\n" +
+	"\x03key\x18\x01 \x01(\fR\x03key\"7\n" +
 	"\x11QueryRangeRequest\x12\x10\n" +
-	"\x03min\x18\x01 \x01(\tR\x03min\x12\x10\n" +
-	"\x03max\x18\x02 \x01(\tR\x03max\"9\n" +
+	"\x03min\x18\x01 \x01(\fR\x03min\x12\x10\n" +
+	"\x03max\x18\x02 \x01(\fR\x03max\"9\n" +
 	"\n" +
 	"SetRequest\x12+\n" +
 	"\x04pair\x18\x01 \x01(\v2\x17.tukki.rpc.kv.v1.KvPairR\x04pair\"!\n" +
 	"\rDeleteRequest\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\"8\n" +
+	"\x03key\x18\x01 \x01(\fR\x03key\"8\n" +
 	"\x12DeleteRangeRequest\x12\x10\n" +
-	"\x03min\x18\x01 \x01(\tR\x03min\x12\x10\n" +
-	"\x03max\x18\x02 \x01(\tR\x03max\"0\n" +
+	"\x03min\x18\x01 \x01(\fR\x03min\x12\x10\n" +
+	"\x03max\x18\x02 \x01(\fR\x03max\"0\n" +
 	"\x06KvPair\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value\"!\n" +
+	"\x03key\x18\x01 \x01(\fR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\fR\x05value\"!\n" +
 	"\x05Error\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\"w\n" +
 	"\rQueryResponse\x12.\n" +

@@ -22,44 +22,44 @@ var ErrKeyNotFound = errors.New("not found")
 
 // Get implements raft.StableStore.
 func (t *Raftukki) Get(key []byte) ([]byte, error) {
-	val, err := t.db.Get(string(key))
+	val, err := t.db.Get(key)
 	if err != nil {
 		if err == db.ErrKeyNotFound {
 			return nil, ErrKeyNotFound
 		}
 		return nil, err
 	}
-	return []byte(val), err
+	return val, err
 }
 
 // Set implements raft.StableStore.
 func (t *Raftukki) Set(key []byte, val []byte) error {
-	return t.db.Set(string(key), string(val))
+	return t.db.Set(key, val)
 }
 
 // GetUint64 implements raft.StableStore.
 func (t *Raftukki) GetUint64(key []byte) (uint64, error) {
-	val, err := t.db.Get(string(key))
+	val, err := t.db.Get(key)
 	if err != nil {
 		if err == db.ErrKeyNotFound {
 			return 0, ErrKeyNotFound
 		}
 		return 0, err
 	}
-	number, err := strconv.ParseUint(val, 10, 64)
+	number, err := strconv.ParseUint(string(val), 10, 64)
 	return number, err
 }
 
 // SetUint64 implements raft.StableStore.
 func (t *Raftukki) SetUint64(key []byte, val uint64) error {
-	return t.db.Set(string(key), fmt.Sprintf("%d", val))
+	return t.db.Set(key, []byte(strconv.FormatUint(val, 10)))
 }
 
 const logPrefix = "raft-log-"
 
-func logKey(index uint64) string {
+func logKey(index uint64) []byte {
 	// need to pad with zeros to make it sortable
-	return fmt.Sprintf("%s%012d", logPrefix, index)
+	return []byte(fmt.Sprintf("%s%012d", logPrefix, index))
 }
 
 // DeleteRange implements raft.LogStore.
@@ -70,7 +70,7 @@ func (t *Raftukki) DeleteRange(min uint64, max uint64) error {
 
 // FirstIndex implements raft.LogStore.
 func (t *Raftukki) FirstIndex() (uint64, error) {
-	c, err := t.db.GetCursorWithRange(logKey(0), "")
+	c, err := t.db.GetCursorWithRange(logKey(0), nil)
 	if err != nil {
 		return 0, err
 	}
@@ -82,13 +82,13 @@ func (t *Raftukki) FirstIndex() (uint64, error) {
 	}
 
 	indexStr := val.Key[len(logPrefix):]
-	return strconv.ParseUint(indexStr, 10, 64)
+	return strconv.ParseUint(string(indexStr), 10, 64)
 }
 
 // LastIndex implements raft.LogStore.
 func (t *Raftukki) LastIndex() (uint64, error) {
 	// this is super slow, need to have reverse cursor to make it faster
-	c, err := t.db.GetCursorWithRange(logKey(0), "")
+	c, err := t.db.GetCursorWithRange(logKey(0), nil)
 	if err != nil {
 		return 0, err
 	}
@@ -105,7 +105,7 @@ func (t *Raftukki) LastIndex() (uint64, error) {
 		}
 
 		indexStr := val.Key[len(logPrefix):]
-		index, err := strconv.ParseUint(indexStr, 10, 64)
+		index, err := strconv.ParseUint(string(indexStr), 10, 64)
 		if err != nil {
 			return 0, err
 		}
@@ -151,8 +151,7 @@ func (t *Raftukki) StoreLogs(logs []*raft.Log) error {
 		if err != nil {
 			return err
 		}
-		b64str := base64.StdEncoding.EncodeToString(raw)
-		err = t.db.Set(logKey(log.Index), b64str)
+		err = t.db.Set(logKey(log.Index), raw)
 		if err != nil {
 			return err
 		}
@@ -167,14 +166,17 @@ func (t *Raftukki) GetLog(index uint64, log *raft.Log) error {
 	if err != nil {
 		return err
 	}
-	b, err := base64.StdEncoding.DecodeString(val)
-	if err != nil {
-		return err
-	}
 	protoLog := &raftlogv1.Log{}
-	err = proto.Unmarshal(b, protoLog)
-	if err != nil {
-		return err
+	if err := proto.Unmarshal(val, protoLog); err != nil {
+		// Older databases stored Raft records as base64 text.
+		raw, decodeErr := base64.StdEncoding.DecodeString(string(val))
+		if decodeErr != nil {
+			return fmt.Errorf("failed to decode Raft log: %w", err)
+		}
+		protoLog.Reset()
+		if err := proto.Unmarshal(raw, protoLog); err != nil {
+			return err
+		}
 	}
 	*log = *logToRaft(protoLog)
 	return nil

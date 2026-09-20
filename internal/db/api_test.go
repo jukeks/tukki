@@ -1,6 +1,7 @@
 package db
 
 import (
+	"bytes"
 	"fmt"
 	"testing"
 
@@ -51,12 +52,12 @@ func TestGetFromSegments(t *testing.T) {
 
 	key := randstr.String(10)
 	value := randstr.String(10)
-	err = db.Set(key, value)
+	err = db.Set([]byte(key), []byte(value))
 	if err != nil {
 		t.Fatalf("failed to set key-value pair: %v", err)
 	}
 
-	_, found := db.ongoing.Memtable.Get(key)
+	_, found := db.ongoing.Memtable.Get([]byte(key))
 	if !found {
 		t.Fatalf("key not found in memtable")
 	}
@@ -66,16 +67,16 @@ func TestGetFromSegments(t *testing.T) {
 		t.Fatalf("failed to seal segment: %v", err)
 	}
 
-	_, found = db.ongoing.Memtable.Get(key)
+	_, found = db.ongoing.Memtable.Get([]byte(key))
 	if found {
 		t.Fatalf("key found in memtable")
 	}
 
-	val, err := db.Get(key)
+	val, err := db.Get([]byte(key))
 	if err != nil {
 		t.Fatalf("failed to get value: %v", err)
 	}
-	if val != value {
+	if !bytes.Equal(val, []byte(value)) {
 		t.Fatalf("expected value %s, got %s", value, val)
 	}
 }
@@ -89,16 +90,16 @@ func TestDeleteAndSeal(t *testing.T) {
 
 	key := randstr.String(10)
 	value := randstr.String(10)
-	err = db.Set(key, value)
+	err = db.Set([]byte(key), []byte(value))
 	if err != nil {
 		t.Fatalf("failed to set key-value pair: %v", err)
 	}
 
-	readValue, err := db.Get(key)
+	readValue, err := db.Get([]byte(key))
 	if err != nil {
 		t.Fatalf("key not found in memtable")
 	}
-	if readValue != value {
+	if !bytes.Equal(readValue, []byte(value)) {
 		t.Fatalf("Get returned wrong value: %s vs %s", readValue, value)
 	}
 
@@ -107,11 +108,11 @@ func TestDeleteAndSeal(t *testing.T) {
 		t.Fatalf("failed to seal segment: %v", err)
 	}
 
-	if err := db.Delete(key); err != nil {
+	if err := db.Delete([]byte(key)); err != nil {
 		t.Fatalf("failed to delete key: %v", err)
 	}
 
-	_, err = db.Get(key)
+	_, err = db.Get([]byte(key))
 	if err != ErrKeyNotFound {
 		t.Fatalf("key found db after delete")
 	}
@@ -126,7 +127,7 @@ func TestGetSSTableReader(t *testing.T) {
 
 	key := randstr.String(10)
 	value := randstr.String(10)
-	err = db.Set(key, value)
+	err = db.Set([]byte(key), []byte(value))
 	if err != nil {
 		t.Fatalf("failed to set key-value pair: %v", err)
 	}
@@ -147,7 +148,7 @@ func TestGetSSTableReader(t *testing.T) {
 		t.Fatalf("failed to read value: %v", err)
 	}
 
-	if val.Key != key {
+	if !bytes.Equal(val.Key, []byte(key)) {
 		t.Fatalf("expected key %s, got %s", key, val.Key)
 	}
 }
@@ -161,7 +162,7 @@ func TestGetSegmentMetadata(t *testing.T) {
 
 	key := randstr.String(10)
 	value := randstr.String(10)
-	err = db.Set(key, value)
+	err = db.Set([]byte(key), []byte(value))
 	if err != nil {
 		t.Fatalf("failed to set key-value pair: %v", err)
 	}
@@ -197,7 +198,7 @@ func TestGetCursorWithRange(t *testing.T) {
 	for i := 0; i < 10000; i++ {
 		key := fmt.Sprintf("key-%04d", i)
 		value := randstr.String(10)
-		err = db.Set(key, value)
+		err = db.Set([]byte(key), []byte(value))
 		if err != nil {
 			t.Fatalf("failed to set key-value pair: %v", err)
 		}
@@ -211,7 +212,7 @@ func TestGetCursorWithRange(t *testing.T) {
 		}
 	}
 
-	cursor, err := db.GetCursorWithRange("key-0000", "key-9999")
+	cursor, err := db.GetCursorWithRange([]byte("key-0000"), []byte("key-9999"))
 	if err != nil {
 		t.Fatalf("failed to get cursor: %v", err)
 	}
@@ -224,11 +225,11 @@ func TestGetCursorWithRange(t *testing.T) {
 		}
 
 		key := fmt.Sprintf("key-%04d", i)
-		if entry.Key != key {
+		if !bytes.Equal(entry.Key, []byte(key)) {
 			t.Fatalf("expected key %s, got %s", key, entry.Key)
 		}
 
-		if entry.Value != values[i] {
+		if !bytes.Equal(entry.Value, []byte(values[i])) {
 			t.Fatalf("expected value %s, got %s", values[i], entry.Value)
 		}
 	}
@@ -238,7 +239,7 @@ func TestGetCursorWithRange(t *testing.T) {
 		t.Fatalf("expected EOF, got %v", err)
 	}
 
-	cursor, err = db.GetCursorWithRange("key-0100", "key-0200")
+	cursor, err = db.GetCursorWithRange([]byte("key-0100"), []byte("key-0200"))
 	if err != nil {
 		t.Fatalf("failed to get cursor: %v", err)
 	}
@@ -250,11 +251,11 @@ func TestGetCursorWithRange(t *testing.T) {
 		}
 
 		key := fmt.Sprintf("key-%04d", i)
-		if entry.Key != key {
+		if !bytes.Equal(entry.Key, []byte(key)) {
 			t.Fatalf("expected key %s, got %s", key, entry.Key)
 		}
 
-		if entry.Value != values[i] {
+		if !bytes.Equal(entry.Value, []byte(values[i])) {
 			t.Fatalf("expected value %s, got %s", values[i], entry.Value)
 		}
 	}
@@ -270,7 +271,7 @@ func TestDeleteRange(t *testing.T) {
 	for i := 0; i < 10000; i++ {
 		key := fmt.Sprintf("key-%04d", i)
 		value := randstr.String(10)
-		err = db.Set(key, value)
+		err = db.Set([]byte(key), []byte(value))
 		if err != nil {
 			t.Fatalf("failed to set key-value pair: %v", err)
 		}
@@ -283,7 +284,7 @@ func TestDeleteRange(t *testing.T) {
 		}
 	}
 
-	deleted, err := db.DeleteRange("key-0100", "key-1000")
+	deleted, err := db.DeleteRange([]byte("key-0100"), []byte("key-1000"))
 	if err != nil {
 		t.Fatalf("failed to delete range: %v", err)
 	}
@@ -291,7 +292,7 @@ func TestDeleteRange(t *testing.T) {
 		t.Fatalf("expected 10000 deleted, got %d", deleted)
 	}
 
-	cursor, err := db.GetCursorWithRange("key-0000", "key-9999")
+	cursor, err := db.GetCursorWithRange([]byte("key-0000"), []byte("key-9999"))
 	if err != nil {
 		t.Fatalf("failed to get cursor: %v", err)
 	}

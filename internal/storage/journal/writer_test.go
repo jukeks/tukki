@@ -19,8 +19,8 @@ func BenchmarkSyncWriter(b *testing.B) {
 	}
 
 	entry := &walv1.WalEntry{
-		Key:   "key",
-		Value: randstr.String(16 * 1024),
+		Key:   []byte("key"),
+		Value: []byte(randstr.String(16 * 1024)),
 	}
 
 	b.SetBytes(int64(len(entry.Key) + len(entry.Value)))
@@ -49,8 +49,8 @@ func BenchmarkAsyncWriter(b *testing.B) {
 	}
 
 	entry := &walv1.WalEntry{
-		Key:   "key",
-		Value: randstr.String(16 * 1024),
+		Key:   []byte("key"),
+		Value: []byte(randstr.String(16 * 1024)),
 	}
 
 	b.SetBytes(int64(len(entry.Key) + len(entry.Value)))

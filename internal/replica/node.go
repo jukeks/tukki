@@ -21,11 +21,41 @@ const (
 )
 
 type command struct {
-	Op    string `json:"op,omitempty"`
-	Key   string `json:"key,omitempty"`
-	Value string `json:"value,omitempty"`
-	Min   string `json:"min,omitempty"`
-	Max   string `json:"max,omitempty"`
+	Version int    `json:"version,omitempty"`
+	Op      string `json:"op,omitempty"`
+	Key     []byte `json:"key,omitempty"`
+	Value   []byte `json:"value,omitempty"`
+	Min     []byte `json:"min,omitempty"`
+	Max     []byte `json:"max,omitempty"`
+}
+
+// UnmarshalJSON accepts both byte commands and older text commands.
+func (c *command) UnmarshalJSON(data []byte) error {
+	type byteCommand command
+	var header struct {
+		Version int `json:"version"`
+	}
+	if err := json.Unmarshal(data, &header); err != nil {
+		return err
+	}
+	if header.Version == 1 {
+		return json.Unmarshal(data, (*byteCommand)(c))
+	}
+	if header.Version != 0 {
+		return fmt.Errorf("unsupported command version: %d", header.Version)
+	}
+	var legacy struct {
+		Op    string `json:"op"`
+		Key   string `json:"key"`
+		Value string `json:"value"`
+		Min   string `json:"min"`
+		Max   string `json:"max"`
+	}
+	if err := json.Unmarshal(data, &legacy); err != nil {
+		return err
+	}
+	*c = command{Op: legacy.Op, Key: []byte(legacy.Key), Value: []byte(legacy.Value), Min: []byte(legacy.Min), Max: []byte(legacy.Max)}
+	return nil
 }
 
 type Peer struct {
@@ -167,28 +197,29 @@ func (n *Node) Join(nodeID, addr string) error {
 }
 
 // Get returns the value for the given key.
-func (n *Node) Get(key string) (string, error) {
+func (n *Node) Get(key []byte) ([]byte, error) {
 	n.mu.RLock()
 	defer n.mu.RUnlock()
 	return n.db.Get(key)
 }
 
-func (n *Node) GetRange(min string, max string) (db.KeyValueIterator, error) {
+func (n *Node) GetRange(min []byte, max []byte) (db.KeyValueIterator, error) {
 	n.mu.RLock()
 	defer n.mu.RUnlock()
 	return n.db.GetCursorWithRange(min, max)
 }
 
 // Set sets the value for the given key.
-func (n *Node) Set(key, value string) error {
+func (n *Node) Set(key, value []byte) error {
 	if n.raft.State() != raft.Leader {
 		return fmt.Errorf("not leader")
 	}
 
 	c := &command{
-		Op:    "set",
-		Key:   key,
-		Value: value,
+		Version: 1,
+		Op:      "set",
+		Key:     key,
+		Value:   value,
 	}
 	b, err := json.Marshal(c)
 	if err != nil {
@@ -204,14 +235,15 @@ func (n *Node) Set(key, value string) error {
 }
 
 // Delete deletes the given key.
-func (n *Node) Delete(key string) error {
+func (n *Node) Delete(key []byte) error {
 	if n.raft.State() != raft.Leader {
 		return fmt.Errorf("not leader")
 	}
 
 	c := &command{
-		Op:  "delete",
-		Key: key,
+		Version: 1,
+		Op:      "delete",
+		Key:     key,
 	}
 	b, err := json.Marshal(c)
 	if err != nil {
@@ -227,15 +259,16 @@ func (n *Node) Delete(key string) error {
 }
 
 // DeleteRange implements kv.DB.
-func (n *Node) DeleteRange(min string, max string) (uint64, error) {
+func (n *Node) DeleteRange(min []byte, max []byte) (uint64, error) {
 	if n.raft.State() != raft.Leader {
 		return 0, fmt.Errorf("not leader")
 	}
 
 	c := &command{
-		Op:  "deleteRange",
-		Min: min,
-		Max: max,
+		Version: 1,
+		Op:      "deleteRange",
+		Min:     min,
+		Max:     max,
 	}
 	b, err := json.Marshal(c)
 	if err != nil {

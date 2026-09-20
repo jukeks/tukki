@@ -41,7 +41,7 @@ func (w *SSTableWriter) WriteFromIterator(iterator keyvalue.KeyValueIterator) er
 		if err != nil {
 			return fmt.Errorf("failed to write entry: %w", err)
 		}
-		w.offsetMap[entry.Key] = offset
+		w.offsetMap[string(entry.Key)] = offset
 		offset += uint64(len)
 	}
 
@@ -74,7 +74,7 @@ func (w *SSTableWriter) WriteFromIteratorUntil(iterator keyvalue.KeyValueIterato
 		if err != nil {
 			return fmt.Errorf("failed to write entry: %w", err)
 		}
-		w.offsetMap[entry.Key] = offset
+		w.offsetMap[string(entry.Key)] = offset
 		offset += uint64(len)
 		if offset >= maxSize {
 			break
